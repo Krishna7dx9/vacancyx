@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     )
 
     app_name: str = "VacancyX"
+    database_url: str = "sqlite:///./.vacancyx/vacancyx.db"
     environment: Literal["development", "test", "production"] = "development"
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
     api_host: str = "127.0.0.1"
