@@ -45,6 +45,20 @@ class CandidateAnswerPatch(BaseModel):
             raise ValueError("Text fields must not be blank.")
         return normalized
 
+    @field_validator("tags")
+    @classmethod
+    def tags_must_not_be_null(cls, value: list[str] | None) -> list[str]:
+        if value is None:
+            raise ValueError("tags cannot be null.")
+        return value
+
+    @field_validator("is_active")
+    @classmethod
+    def active_must_not_be_null(cls, value: bool | None) -> bool:
+        if value is None:
+            raise ValueError("is_active cannot be null.")
+        return value
+
 
 class CandidateAnswerRead(BaseModel):
     """Current answer content and revision metadata."""
