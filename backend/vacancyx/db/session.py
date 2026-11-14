@@ -1,7 +1,7 @@
 """Engine and session construction with safe SQLite defaults."""
 
-from functools import lru_cache
 from collections.abc import Iterator
+from functools import lru_cache
 from pathlib import Path
 
 from sqlalchemy import Engine, create_engine, event, text
