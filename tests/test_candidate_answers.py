@@ -152,6 +152,14 @@ def test_answer_ownership_and_validation(client: TestClient) -> None:
         json={"answer_text": None},
     )
     assert null_text.status_code == 422
+    null_tags = client.patch(
+        f"/api/v1/candidates/{owner_id}/answers/{answer_id}", json={"tags": None}
+    )
+    assert null_tags.status_code == 422
+    null_active = client.patch(
+        f"/api/v1/candidates/{owner_id}/answers/{answer_id}", json={"is_active": None}
+    )
+    assert null_active.status_code == 422
     unknown_field = client.post(
         f"/api/v1/candidates/{owner_id}/answers",
         json={
