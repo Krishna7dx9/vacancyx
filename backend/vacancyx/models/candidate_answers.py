@@ -11,8 +11,8 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Index,
-    JSON,
     Integer,
+    JSON,
     String,
     Text,
     UniqueConstraint,
@@ -55,7 +55,9 @@ class CandidateAnswer(TimestampMixin, Base):
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
     revisions: Mapped[list[CandidateAnswerRevision]] = relationship(
-        back_populates="answer", cascade="all, delete-orphan", order_by="CandidateAnswerRevision.revision"
+        back_populates="answer",
+        cascade="all, delete-orphan",
+        order_by="CandidateAnswerRevision.revision",
     )
 
 
