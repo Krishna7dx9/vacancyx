@@ -20,6 +20,14 @@ class CandidateProfileCreate(BaseModel):
     experience: list[dict[str, Any]] = Field(default_factory=list, max_length=100)
     links: dict[str, str] = Field(default_factory=dict)
 
+    @field_validator("display_name")
+    @classmethod
+    def normalize_display_name(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("display_name must not be blank")
+        return normalized
+
 
 class CandidateProfilePatch(BaseModel):
     """Partially update a candidate without replacing omitted fields."""
@@ -34,14 +42,17 @@ class CandidateProfilePatch(BaseModel):
     education: list[dict[str, Any]] = Field(default_factory=list, max_length=50)
     experience: list[dict[str, Any]] = Field(default_factory=list, max_length=100)
     links: dict[str, str] = Field(default_factory=dict)
-    is_active: bool | None = None
+    is_active: bool = True
 
     @field_validator("display_name")
     @classmethod
     def display_name_must_not_be_null(cls, value: str | None) -> str:
         if value is None:
             raise ValueError("display_name cannot be null")
-        return value
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("display_name must not be blank")
+        return normalized
 
 
 class CandidateProfileRead(BaseModel):
