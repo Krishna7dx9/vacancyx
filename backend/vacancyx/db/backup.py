@@ -18,7 +18,7 @@ def backup_sqlite_database(engine: Engine, destination: str | Path) -> Path:
     if engine.dialect.name != "sqlite":
         raise ValueError("Database backups are currently supported only for SQLite.")
     database = engine.url.database
-    if database in {None, ":memory:"}:
+    if database is None or database == ":memory:":
         raise ValueError("A file-backed SQLite database is required for backups.")
 
     source_path = Path(database).expanduser().resolve()
@@ -38,6 +38,8 @@ def backup_sqlite_database(engine: Engine, destination: str | Path) -> Path:
     try:
         with engine.connect() as source_connection:
             source_dbapi = source_connection.connection.driver_connection
+            if not isinstance(source_dbapi, sqlite3.Connection):
+                raise RuntimeError("The configured SQLite driver does not expose a sqlite3 connection.")
             backup_connection = sqlite3.connect(temporary_path)
             try:
                 source_dbapi.backup(backup_connection)
