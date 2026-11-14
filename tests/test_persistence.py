@@ -1,6 +1,6 @@
 """Persistence behavior and schema migration tests."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from alembic import command
@@ -132,7 +132,7 @@ def test_task_not_claimed_before_available_at(engine) -> None:
             task_type="later",
             payload={},
             idempotency_key="later-task",
-            available_at=datetime(2099, 1, 1, tzinfo=timezone.utc),
+            available_at=datetime(2099, 1, 1, tzinfo=UTC),
         )
 
     with Session(engine) as session, session.begin():
