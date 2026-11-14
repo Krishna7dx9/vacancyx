@@ -2,8 +2,8 @@
 
 from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 revision: str = "0002_candidate_answers"
 down_revision: str | None = "0001_initial"
@@ -77,7 +77,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index("ix_candidate_answer_revisions_answer_id", table_name="candidate_answer_revisions")
+    op.drop_index(
+        "ix_candidate_answer_revisions_answer_id", table_name="candidate_answer_revisions"
+    )
     op.drop_table("candidate_answer_revisions")
     op.drop_index("ix_candidate_answers_candidate_active", table_name="candidate_answers")
     op.drop_table("candidate_answers")
