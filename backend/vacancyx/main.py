@@ -1,9 +1,12 @@
 """FastAPI application entry point."""
 
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
+from sqlalchemy.exc import SQLAlchemyError
 
 from vacancyx import __version__
 from vacancyx.config import get_settings
+from vacancyx.db.session import check_database_connection
 
 
 def create_app() -> FastAPI:
@@ -20,9 +23,13 @@ def create_app() -> FastAPI:
         """Report that the API process can serve requests; no dependency checks here."""
         return {"status": "alive"}
 
-    @app.get("/health/ready", tags=["health"])
-    async def readiness() -> dict[str, str]:
-        """Initial readiness probe. Dependency checks are added with persistence."""
+    @app.get("/health/ready", tags=["health"], response_model=None)
+    async def readiness() -> dict[str, str] | JSONResponse:
+        """Report readiness only when the configured database accepts a connection."""
+        try:
+            check_database_connection()
+        except SQLAlchemyError:
+            return JSONResponse(status_code=503, content={"status": "not_ready"})
         return {"status": "ready"}
 
     return app
