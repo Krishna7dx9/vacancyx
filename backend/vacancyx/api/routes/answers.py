@@ -37,7 +37,9 @@ def create_answer(
         session.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="An answer for this normalized question already exists.",
+            detail=(
+                "An answer for this normalized question already exists."
+            ),
         ) from exc
     if answer is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Candidate not found.")
