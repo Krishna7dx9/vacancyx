@@ -26,6 +26,8 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./.vacancyx/vacancyx.db"
     storage_dir: Path = Path(".vacancyx")
     max_resume_size_bytes: int = Field(default=10 * 1024 * 1024, ge=1024, le=50 * 1024 * 1024)
+    max_resume_pages: int = Field(default=30, ge=1, le=100)
+    max_extracted_chars: int = Field(default=100_000, ge=1_000, le=500_000)
     environment: Literal["development", "test", "production"] = "development"
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
     api_host: str = "127.0.0.1"
