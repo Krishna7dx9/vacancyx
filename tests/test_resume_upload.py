@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
 from vacancyx.db.base import Base
-from vacancyx.models import CandidateProfile, Resume
+from vacancyx.models import CandidateProfile
 from vacancyx.services.resumes import (
     CandidateNotFoundError,
     DuplicateResumeError,
