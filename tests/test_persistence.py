@@ -142,11 +142,11 @@ def test_task_not_claimed_before_available_at(engine) -> None:
 def test_alembic_upgrade_creates_expected_schema(tmp_path) -> None:
     database_path = tmp_path / "migration-test.sqlite3"
     config = Config("alembic.ini")
-    config.set_main_option("sqlalchemy.url", f"sqlite:///{database_path}")
-    command.upgrade(config, "head")
-
     migrated_engine = create_engine(f"sqlite:///{database_path}")
     try:
+        with migrated_engine.connect() as connection:
+            config.attributes["connection"] = connection
+            command.upgrade(config, "head")
         inspector = inspect(migrated_engine)
         tables = set(inspector.get_table_names())
         assert {
