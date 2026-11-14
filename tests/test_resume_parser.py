@@ -11,8 +11,8 @@ from vacancyx.db.base import Base
 from vacancyx.models import CandidateProfile, Resume
 from vacancyx.services.resume_parser import (
     ResumeParseError,
-    ResumeParseService,
     ResumeParser,
+    ResumeParseService,
 )
 
 
