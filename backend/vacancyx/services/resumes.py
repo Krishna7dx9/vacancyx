@@ -105,6 +105,7 @@ class ResumeService:
             return resume
         except Exception:
             temporary_path.unlink(missing_ok=True)
+            final_path.unlink(missing_ok=True)
             raise
 
     def _write_staged_file(self, file_stream: BinaryIO, destination: Path) -> tuple[str, int]:
