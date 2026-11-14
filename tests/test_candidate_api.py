@@ -6,6 +6,7 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from vacancyx.config import Settings
 from vacancyx.db.base import Base
 from vacancyx.db.session import get_session
 from vacancyx.main import create_app
@@ -113,3 +114,31 @@ def test_candidate_profile_not_found_and_empty_patch(client: TestClient) -> None
 def test_candidate_profile_pagination_is_bounded(client: TestClient) -> None:
     invalid_limit = client.get("/api/v1/candidates?limit=1000")
     assert invalid_limit.status_code == 422
+
+def test_resume_upload_endpoint_uses_local_storage(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    from vacancyx.api.routes import resumes as resume_routes
+
+    monkeypatch.setattr(resume_routes, "get_settings", lambda: Settings(storage_dir=tmp_path))
+    created = client.post(
+        "/api/v1/candidates",
+        json={"display_name": "Synthetic Upload Candidate"},
+    )
+    candidate_id = created.json()["id"]
+
+    uploaded = client.post(
+        f"/api/v1/candidates/{candidate_id}/resumes",
+        files={"file": ("resume.pdf", b"%PDF-1.7\\nsynthetic", "application/pdf")},
+    )
+    assert uploaded.status_code == 201
+    metadata = uploaded.json()
+    assert metadata["candidate_id"] == candidate_id
+    assert metadata["original_filename"] == "resume.pdf"
+    assert metadata["parse_status"] == "pending"
+    assert (tmp_path / metadata["id"]).exists() is False
+    assert (tmp_path / "resumes").is_dir()
+
+    listed = client.get(f"/api/v1/candidates/{candidate_id}/resumes")
+    assert listed.status_code == 200
+    assert [item["id"] for item in listed.json()] == [metadata["id"]]
