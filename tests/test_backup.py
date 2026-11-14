@@ -1,4 +1,5 @@
-from pathlib import Path
+
+from unittest.mock import Mock
 
 import pytest
 from sqlalchemy import create_engine, select
@@ -59,10 +60,7 @@ def test_backup_rejects_source_as_destination(tmp_path) -> None:
 
 
 def test_backup_rejects_non_sqlite_engine(tmp_path) -> None:
-    engine = create_engine("sqlite://")
-    try:
-        engine.dialect.name = "postgresql"
-        with pytest.raises(ValueError, match="only for SQLite"):
-            backup_sqlite_database(engine, tmp_path / "backup.sqlite3")
-    finally:
-        engine.dispose()
+    engine = Mock()
+    engine.dialect.name = "postgresql"
+    with pytest.raises(ValueError, match="only for SQLite"):
+        backup_sqlite_database(engine, tmp_path / "backup.sqlite3")
