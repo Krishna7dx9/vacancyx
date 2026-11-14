@@ -9,6 +9,7 @@ from vacancyx.api.schemas.candidates import (
     CandidateProfileRead,
 )
 from vacancyx.db.session import get_session
+from vacancyx.models import CandidateProfile
 from vacancyx.services.candidates import CandidateService
 
 router = APIRouter(prefix="/candidates", tags=["candidates"])
