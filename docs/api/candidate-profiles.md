@@ -18,3 +18,14 @@ Candidate records are configurable per local installation. No candidate name, co
 ## Local-only security boundary
 
 This API does not yet provide authentication or multi-user authorization. Keep the API bound to loopback (127.0.0.1) and do not expose it to a LAN, reverse proxy or public network. A later security milestone must add an explicit owner/session boundary and CSRF/Origin protections before remote access is supported.
+
+## Resume metadata and upload
+
+| Method | Path | Behavior |
+|---|---|---|
+| POST | /api/v1/candidates/{candidate_id}/resumes | Upload a validated PDF, DOCX or TXT file; returns 201 |
+| GET | /api/v1/candidates/{candidate_id}/resumes | List safe metadata for the candidate's stored resumes |
+
+The upload is streamed to a temporary file under the private local storage directory. Size is bounded by VACANCYX_MAX_RESUME_SIZE_BYTES (10 MiB by default). The server derives the media type from the extension and validates file signatures/content; the browser-supplied MIME type is not trusted. DOCX archives are bounded by entry count and uncompressed size, reject traversal paths/macros and are integrity-tested.
+
+Stored files use server-generated UUID names under the private resumes directory. The original filename is reduced to a basename and sanitized. API responses never expose filesystem paths or storage keys. A SHA-256 checksum prevents storing identical resume bytes twice for the same candidate. New resumes begin with parse_status=pending; parsing and editable extraction are follow-on work.
