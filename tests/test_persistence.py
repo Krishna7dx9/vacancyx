@@ -67,18 +67,19 @@ def test_resume_requires_positive_file_size(engine) -> None:
         candidate = CandidateProfile(display_name="Synthetic Candidate")
         session.add(candidate)
         session.flush()
-        session.add(
-            Resume(
-                candidate_id=candidate.id,
-                storage_key="resumes/test.pdf",
-                original_filename="resume.pdf",
-                media_type="application/pdf",
-                file_size_bytes=0,
-                checksum_sha256="a" * 64,
-            )
-        )
         with pytest.raises(IntegrityError):
-            session.flush()
+            with session.begin_nested():
+                session.add(
+                    Resume(
+                        candidate_id=candidate.id,
+                        storage_key="resumes/test.pdf",
+                        original_filename="resume.pdf",
+                        media_type="application/pdf",
+                        file_size_bytes=0,
+                        checksum_sha256="a" * 64,
+                    )
+                )
+                session.flush()
 
 
 def test_application_candidate_job_pair_is_unique(engine) -> None:
@@ -87,14 +88,15 @@ def test_application_candidate_job_pair_is_unique(engine) -> None:
         job = Job(company_name="Example Co", title="Backend Engineer")
         session.add_all([candidate, job])
         session.flush()
-        session.add_all(
-            [
-                Application(candidate_id=candidate.id, job_id=job.id),
-                Application(candidate_id=candidate.id, job_id=job.id),
-            ]
-        )
         with pytest.raises(IntegrityError):
-            session.flush()
+            with session.begin_nested():
+                session.add_all(
+                    [
+                        Application(candidate_id=candidate.id, job_id=job.id),
+                        Application(candidate_id=candidate.id, job_id=job.id),
+                    ]
+                )
+                session.flush()
 
 
 def test_task_enqueue_is_idempotent_and_claims_once(engine) -> None:
