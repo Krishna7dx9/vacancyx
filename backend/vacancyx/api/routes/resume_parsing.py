@@ -32,7 +32,9 @@ def parse_resume(resume_id: str, session: SessionDep) -> ResumeParseResult:
     try:
         resume = build_parser_service(session).parse(resume_id)
     except ResumeParseError as error:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)) from error
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)
+        ) from error
     if resume is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resume not found.")
     return ResumeParseResult.model_validate(resume)
