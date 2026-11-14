@@ -112,7 +112,7 @@ class ResumeService:
         digest = hashlib.sha256()
         total_size = 0
         file_stream.seek(0)
-        with destination.open("xb") as target:
+        with destination.open("wb") as target:
             while chunk := file_stream.read(64 * 1024):
                 total_size += len(chunk)
                 if total_size > self._max_size_bytes:
