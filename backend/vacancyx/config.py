@@ -5,6 +5,7 @@ Environment configuration is reserved for process/runtime concerns.
 """
 
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
 
 from pydantic import Field
@@ -23,6 +24,8 @@ class Settings(BaseSettings):
 
     app_name: str = "VacancyX"
     database_url: str = "sqlite:///./.vacancyx/vacancyx.db"
+    storage_dir: Path = Path(".vacancyx")
+    max_resume_size_bytes: int = Field(default=10 * 1024 * 1024, ge=1024, le=50 * 1024 * 1024)
     environment: Literal["development", "test", "production"] = "development"
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
     api_host: str = "127.0.0.1"
