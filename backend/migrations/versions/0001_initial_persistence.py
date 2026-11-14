@@ -1,9 +1,12 @@
 """Initial, immutable persistence schema."""
 
+# Migration DDL is intentionally explicit; long constraint declarations are easier to review.
+# ruff: noqa: E501
+
 from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 revision: str = "0001_initial"
 down_revision: str | None = None
