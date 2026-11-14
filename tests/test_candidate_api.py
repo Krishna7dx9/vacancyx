@@ -1,6 +1,5 @@
 from collections.abc import Iterator
 
-import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
