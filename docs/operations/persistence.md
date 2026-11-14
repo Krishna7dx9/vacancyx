@@ -15,7 +15,20 @@ Migrations are explicit and schema creation is never performed automatically at 
 Application services own transaction boundaries. Repositories flush but never commit. Keep transactions short; never hold one open while making network or browser calls. SQLite foreign-key enforcement and a bounded busy timeout are enabled for each connection.
 
 ## Backups and recovery
-Stop the API and worker before copying the SQLite database and its associated WAL/SHM files. Prefer SQLite's online backup API when a live backup facility is introduced. Keep backups outside the repository, restrict filesystem permissions, and test restoration before relying on a backup. Do not copy candidate data into issue reports or CI artifacts.
+Use the built-in SQLite online backup utility to create a consistent snapshot while the database is open:
+
+```python
+from pathlib import Path
+
+from vacancyx.db.backup import backup_sqlite_database
+from vacancyx.db.session import get_engine
+
+backup_sqlite_database(get_engine(), Path.home() / "VacancyXBackups" / "latest.sqlite3")
+```
+
+The utility uses SQLite's backup API (so committed WAL content is included), checks the backup with `PRAGMA integrity_check`, writes to a temporary file beside the destination, and atomically replaces the destination only after validation. It rejects in-memory databases, non-SQLite engines and a destination equal to the source. The destination should be outside the repository and protected by local filesystem permissions.
+
+A backup is not proven until restoration is tested. Restore to a separate disposable database, run `alembic upgrade head` if needed, and verify the expected tables and records. Do not copy candidate data into issue reports or CI artifacts.
 
 ## Migration policy
 Never edit an already released migration. Add a new revision for every schema change, review generated DDL, and test both upgrade and downgrade on a disposable database. Back up user data before applying migrations to a real local installation. SQLite table rebuilds require special care for constraints and indexes.
