@@ -1,5 +1,7 @@
 """Candidate profile endpoints."""
 
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
@@ -13,6 +15,7 @@ from vacancyx.models import CandidateProfile
 from vacancyx.services.candidates import CandidateService
 
 router = APIRouter(prefix="/candidates", tags=["candidates"])
+SessionDep = Annotated[Session, Depends(get_session)]
 
 
 @router.post(
@@ -22,7 +25,7 @@ router = APIRouter(prefix="/candidates", tags=["candidates"])
 )
 def create_candidate(
     payload: CandidateProfileCreate,
-    session: Session = Depends(get_session),
+    session: SessionDep,
 ) -> CandidateProfile:
     """Create a candidate profile."""
     return CandidateService(session).create(payload)
@@ -30,8 +33,8 @@ def create_candidate(
 
 @router.get("", response_model=list[CandidateProfileRead])
 def list_candidates(
-    limit: int = Query(default=50, ge=1, le=100),
-    offset: int = Query(default=0, ge=0),
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
     session: Session = Depends(get_session),
 ) -> list[CandidateProfile]:
     """List active candidate profiles with bounded pagination."""
