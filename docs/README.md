@@ -1,0 +1,17 @@
+# Engineering documentation
+
+Source of truth for product scope and engineering decisions. Update docs and tests with implementation changes. Do not silently guess unresolved requirements or publish unmeasured capacity claims.
+
+## Reading order
+1. [Product requirements](product/product-requirements.md)
+2. [Scope/non-goals](product/scope-and-non-goals.md)
+3. [Architecture](architecture/system-architecture.md)
+4. [ADRs](architecture/decisions/README.md)
+5. [Domain/data model](data/domain-and-data-model.md)
+6. [Reliability workflows](architecture/workflows-and-reliability.md)
+7. [Security/privacy](security/security-and-privacy.md)
+8. [Testing/performance](quality/testing-and-performance.md)
+9. [Roadmap](roadmap/engineering-roadmap.md)
+10. [Delivery workflow](operations/delivery-workflow.md)
+
+PRD defines behavior; architecture defines boundaries; ADRs record decisions, alternatives and consequences; roadmap exit criteria define completion.
