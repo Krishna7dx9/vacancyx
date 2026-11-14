@@ -23,7 +23,7 @@ def create_app() -> FastAPI:
         """Report that the API process can serve requests; no dependency checks here."""
         return {"status": "alive"}
 
-    @app.get("/health/ready", tags=["health"])
+    @app.get("/health/ready", tags=["health"], response_model=None)
     async def readiness() -> dict[str, str] | JSONResponse:
         """Report readiness only when the configured database accepts a connection."""
         try:
