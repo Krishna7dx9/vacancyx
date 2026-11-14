@@ -33,9 +33,9 @@ def create_candidate(
 
 @router.get("", response_model=list[CandidateProfileRead])
 def list_candidates(
+    session: SessionDep,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
-    session: SessionDep,
 ) -> list[CandidateProfile]:
     """List active candidate profiles with bounded pagination."""
     return CandidateService(session).list_active(limit=limit, offset=offset)
