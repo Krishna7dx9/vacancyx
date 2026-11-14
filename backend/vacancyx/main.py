@@ -5,6 +5,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 
 from vacancyx import __version__
+from vacancyx.api.router import api_router
 from vacancyx.config import get_settings
 from vacancyx.db.session import check_database_connection
 
@@ -17,6 +18,7 @@ def create_app() -> FastAPI:
         version=__version__,
         description="Local-first job discovery and application workflow platform.",
     )
+    app.include_router(api_router, prefix="/api/v1")
 
     @app.get("/health/live", tags=["health"])
     async def liveness() -> dict[str, str]:
