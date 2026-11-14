@@ -7,7 +7,7 @@ from uuid import uuid4
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
-from vacancyx.models import AutomationTask, CandidateProfile, Job
+from vacancyx.models import AutomationTask, CandidateProfile, Job, Resume
 
 
 class CandidateRepository:
@@ -121,3 +121,26 @@ class TaskRepository:
             return None
         self._session.flush()
         return self._session.get(AutomationTask, claimed_id)
+
+
+class ResumeRepository:
+    """Candidate-owned resume metadata operations."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def add(self, resume: Resume) -> Resume:
+        self._session.add(resume)
+        self._session.flush()
+        return resume
+
+    def get(self, resume_id: str) -> Resume | None:
+        return self._session.get(Resume, resume_id)
+
+    def list_for_candidate(self, candidate_id: str) -> list[Resume]:
+        statement = (
+            select(Resume)
+            .where(Resume.candidate_id == candidate_id)
+            .order_by(Resume.created_at.desc(), Resume.id)
+        )
+        return list(self._session.scalars(statement))
