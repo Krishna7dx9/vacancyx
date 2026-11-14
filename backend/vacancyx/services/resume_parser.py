@@ -48,6 +48,9 @@ class ResumeParser:
         except Exception as error:
             raise ResumeParseError("The resume could not be parsed safely.") from error
 
+        if len(extracted_text) > self._max_characters:
+            extracted_text = extracted_text[: self._max_characters]
+            warnings.append("text_truncated_at_character_limit")
         normalized_text = self._normalize_text(extracted_text)
         if not normalized_text:
             raise ResumeParseError(
