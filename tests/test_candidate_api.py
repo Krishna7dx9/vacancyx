@@ -90,6 +90,12 @@ def test_candidate_profile_rejects_unknown_fields_and_null_name(client: TestClie
     )
     assert null_name.status_code == 422
 
+    blank_name = client.post("/api/v1/candidates", json={"display_name": "   "})
+    assert blank_name.status_code == 422
+
+    null_active = client.patch("/api/v1/candidates/unknown", json={"is_active": None})
+    assert null_active.status_code == 422
+
 
 def test_candidate_profile_not_found_and_empty_patch(client: TestClient) -> None:
     missing = client.get("/api/v1/candidates/not-a-real-id")
@@ -97,6 +103,11 @@ def test_candidate_profile_not_found_and_empty_patch(client: TestClient) -> None
 
     empty_patch = client.patch("/api/v1/candidates/not-a-real-id", json={})
     assert empty_patch.status_code == 400
+
+    missing_update = client.patch(
+        "/api/v1/candidates/not-a-real-id", json={"location": "Remote"}
+    )
+    assert missing_update.status_code == 404
 
 
 def test_candidate_profile_pagination_is_bounded(client: TestClient) -> None:
