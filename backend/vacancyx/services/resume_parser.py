@@ -37,7 +37,9 @@ class ResumeParser:
         try:
             if media_type == "application/pdf":
                 extracted_text, page_count = self._parse_pdf(path, warnings)
-            elif media_type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+            elif media_type == (
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            ):
                 extracted_text = self._parse_docx(path, warnings)
             elif media_type == "text/plain":
                 extracted_text = path.read_text(encoding="utf-8-sig")
