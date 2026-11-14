@@ -4,10 +4,10 @@ from logging.config import fileConfig
 
 from alembic import context
 
+from vacancyx import models  # noqa: F401 - registers mapped tables
 from vacancyx.config import get_settings
 from vacancyx.db.base import Base
 from vacancyx.db.session import build_engine
-from vacancyx import models  # noqa: F401 - registers mapped tables
 
 config = context.config
 if config.config_file_name is not None:
