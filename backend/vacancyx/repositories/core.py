@@ -100,7 +100,7 @@ class TaskRepository:
         if candidate_id is None:
             return None
         token = str(uuid4())
-        result = self._session.execute(
+        claimed_id = self._session.scalar(
             update(AutomationTask)
             .where(
                 AutomationTask.id == candidate_id,
@@ -115,8 +115,9 @@ class TaskRepository:
                 attempts=AutomationTask.attempts + 1,
                 updated_at=now,
             )
+            .returning(AutomationTask.id)
         )
-        if result.rowcount != 1:
+        if claimed_id is None:
             return None
         self._session.flush()
-        return self._session.get(AutomationTask, candidate_id)
+        return self._session.get(AutomationTask, claimed_id)
