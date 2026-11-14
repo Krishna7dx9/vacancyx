@@ -218,3 +218,14 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# VacancyX local candidate data and runtime state
+.vacancyx/
+data/
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+playwright/.auth/
+browser-profiles/
+artifacts/private/
