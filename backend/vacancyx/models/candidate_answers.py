@@ -12,6 +12,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Index,
+    JSON,
     Integer,
     String,
     Text,
@@ -51,7 +52,7 @@ class CandidateAnswer(TimestampMixin, Base):
     question: Mapped[str] = mapped_column(String(500), nullable=False)
     answer_text: Mapped[str] = mapped_column(Text, nullable=False)
     category: Mapped[str | None] = mapped_column(String(80), nullable=True)
-    tags: Mapped[list[str]] = mapped_column(nullable=False, default=list)
+    tags: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     question_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     source: Mapped[str] = mapped_column(String(30), nullable=False, default="manual")
     current_revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
@@ -79,7 +80,7 @@ class CandidateAnswerRevision(Base):
     question_snapshot: Mapped[str] = mapped_column(String(500), nullable=False)
     answer_snapshot: Mapped[str] = mapped_column(Text, nullable=False)
     category_snapshot: Mapped[str | None] = mapped_column(String(80), nullable=True)
-    tags_snapshot: Mapped[list[str]] = mapped_column(nullable=False)
+    tags_snapshot: Mapped[list[str]] = mapped_column(JSON, nullable=False)
     source: Mapped[str] = mapped_column(String(30), nullable=False)
     content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
