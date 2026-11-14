@@ -119,7 +119,9 @@ def test_duplicate_normalized_questions_conflict(client: TestClient) -> None:
     candidate_id = _candidate_id(client)
     path = f"/api/v1/candidates/{candidate_id}/answers"
     first = client.post(path, json={"question": "Why us?", "answer_text": "First answer"})
-    second = client.post(path, json={"question": " WHY   US? ", "answer_text": "Second answer"})
+    second = client.post(
+        path, json={"question": " WHY   US? ", "answer_text": "Second answer"}
+    )
     assert first.status_code == 201
     assert second.status_code == 409
 
@@ -152,7 +154,11 @@ def test_answer_ownership_and_validation(client: TestClient) -> None:
     assert null_text.status_code == 422
     unknown_field = client.post(
         f"/api/v1/candidates/{owner_id}/answers",
-        json={"question": "Question", "answer_text": "Answer", "candidate_name": "hardcoded"},
+        json={
+            "question": "Question",
+            "answer_text": "Answer",
+            "candidate_name": "hardcoded",
+        },
     )
     assert unknown_field.status_code == 422
 
