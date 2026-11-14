@@ -35,9 +35,11 @@ def session() -> Session:
 
 
 def create_candidate_id(session: Session) -> str:
-    candidate = session.scalar(select(CandidateProfile))
-    assert candidate is not None
-    return candidate.id
+    with session.begin():
+        candidate = session.scalar(select(CandidateProfile))
+        assert candidate is not None
+        candidate_id = candidate.id
+    return candidate_id
 
 
 def test_pdf_upload_stores_generated_key_and_safe_metadata(
