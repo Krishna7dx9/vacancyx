@@ -125,7 +125,12 @@ class CandidateAnswerService:
         *, question: str, answer_text: str, category: str | None, tags: list[str]
     ) -> str:
         content = json.dumps(
-            {"question": question, "answer_text": answer_text, "category": category, "tags": tags},
+            {
+                "question": question,
+                "answer_text": answer_text,
+                "category": category,
+                "tags": tags,
+            },
             sort_keys=True,
             separators=(",", ":"),
         )
