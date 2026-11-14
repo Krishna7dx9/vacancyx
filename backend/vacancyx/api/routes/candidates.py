@@ -35,7 +35,7 @@ def create_candidate(
 def list_candidates(
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
-    session: Session = Depends(get_session),
+    session: SessionDep,
 ) -> list[CandidateProfile]:
     """List active candidate profiles with bounded pagination."""
     return CandidateService(session).list_active(limit=limit, offset=offset)
@@ -44,7 +44,7 @@ def list_candidates(
 @router.get("/{candidate_id}", response_model=CandidateProfileRead)
 def get_candidate(
     candidate_id: str,
-    session: Session = Depends(get_session),
+    session: SessionDep,
 ) -> CandidateProfile:
     """Fetch one candidate profile."""
     candidate = CandidateService(session).get(candidate_id)
@@ -57,7 +57,7 @@ def get_candidate(
 def update_candidate(
     candidate_id: str,
     payload: CandidateProfilePatch,
-    session: Session = Depends(get_session),
+    session: SessionDep,
 ) -> CandidateProfile:
     """Update only explicitly supplied candidate fields."""
     if not payload.model_fields_set:
