@@ -86,7 +86,7 @@ class TaskRepository:
 
     def claim_next(self, *, worker_id: str, lease_seconds: int = 60) -> AutomationTask | None:
         """Atomically claim one available task using a conditional update."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         candidate_id = self._session.scalar(
             select(AutomationTask.id)
             .where(
