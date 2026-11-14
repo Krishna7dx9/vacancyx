@@ -1,6 +1,6 @@
 """Small repositories; use cases own transaction boundaries."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import uuid4
 
@@ -77,7 +77,7 @@ class TaskRepository:
             task_type=task_type,
             payload=payload,
             idempotency_key=idempotency_key,
-            available_at=available_at or datetime.now(timezone.utc),
+            available_at=available_at or datetime.now(UTC),
             max_attempts=max_attempts,
         )
         self._session.add(task)
