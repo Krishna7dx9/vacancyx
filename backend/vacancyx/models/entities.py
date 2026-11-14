@@ -7,8 +7,16 @@ from typing import Any
 from uuid import uuid4
 
 from sqlalchemy import (
-    CheckConstraint, DateTime, ForeignKey, Index, Integer, JSON, String, Text,
-    UniqueConstraint, func,
+    JSON,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -34,7 +42,9 @@ class CandidateProfile(TimestampMixin, Base):
     links: Mapped[dict[str, str]] = mapped_column(JSON, nullable=False, default=dict)
     is_active: Mapped[bool] = mapped_column(default=True, nullable=False)
 
-    resumes: Mapped[list[Resume]] = relationship(back_populates="candidate", cascade="all, delete-orphan")
+    resumes: Mapped[list[Resume]] = relationship(
+        back_populates="candidate", cascade="all, delete-orphan"
+    )
     search_profiles: Mapped[list[SearchProfile]] = relationship(
         back_populates="candidate", cascade="all, delete-orphan"
     )
@@ -92,8 +102,12 @@ class Job(TimestampMixin, Base):
     salary_min: Mapped[int | None] = mapped_column(Integer, nullable=True)
     salary_max: Mapped[int | None] = mapped_column(Integer, nullable=True)
     salary_currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
-    first_published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    last_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    first_published_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    last_verified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     status: Mapped[str] = mapped_column(String(30), nullable=False, default="open")
 
     observations: Mapped[list[JobObservation]] = relationship(
@@ -157,7 +171,9 @@ class Application(TimestampMixin, Base):
 
 class ApplicationRevision(TimestampMixin, Base):
     __tablename__ = "application_revisions"
-    __table_args__ = (UniqueConstraint("application_id", "revision", name="uq_application_revision"),)
+    __table_args__ = (
+        UniqueConstraint("application_id", "revision", name="uq_application_revision"),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     application_id: Mapped[str] = mapped_column(
@@ -230,7 +246,9 @@ class AutomationTask(TimestampMixin, Base):
     )
     lease_owner: Mapped[str | None] = mapped_column(String(120), nullable=True)
     lease_token: Mapped[str | None] = mapped_column(String(36), nullable=True)
-    lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    lease_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     last_error_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
     last_error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     result: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
