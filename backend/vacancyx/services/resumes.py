@@ -157,7 +157,8 @@ class ResumeService:
             with zipfile.ZipFile(path) as archive:
                 entries = archive.infolist()
                 names = {entry.filename for entry in entries}
-                if len(entries) > 100 or sum(entry.file_size for entry in entries) > 25 * 1024 * 1024:
+                uncompressed_size = sum(entry.file_size for entry in entries)
+                if len(entries) > 100 or uncompressed_size > 25 * 1024 * 1024:
                     raise ResumeUploadError("The DOCX archive exceeds safe extraction limits.")
                 for entry in entries:
                     parts = PurePosixPath(entry.filename).parts
