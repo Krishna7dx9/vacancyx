@@ -1,4 +1,5 @@
 from fastapi.testclient import TestClient
+
 from vacancyx.main import create_app
 
 
