@@ -129,7 +129,7 @@ def test_resume_upload_endpoint_uses_local_storage(
 
     uploaded = client.post(
         f"/api/v1/candidates/{candidate_id}/resumes",
-        files={"file": ("resume.pdf", b"%PDF-1.7\\nsynthetic", "application/pdf")},
+        files={"file": ("resume.pdf", b"%PDF-1.7\nsynthetic", "application/pdf")},
     )
     assert uploaded.status_code == 201
     metadata = uploaded.json()
@@ -162,7 +162,7 @@ def test_resume_parse_and_review_endpoints(
         files={
             "file": (
                 "resume.txt",
-                b"Backend Engineer\\nperson@example.com\\n",
+                b"Backend Engineer\nperson@example.com\n",
                 "text/plain",
             )
         },
