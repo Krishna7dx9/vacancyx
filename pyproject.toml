@@ -41,6 +41,9 @@ line-length = 100
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
 
+[tool.ruff.lint.isort]
+known-first-party = ["vacancyx"]
+
 [tool.mypy]
 python_version = "3.11"
 strict = true
