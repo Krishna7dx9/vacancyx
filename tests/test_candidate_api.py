@@ -129,7 +129,7 @@ def test_resume_upload_endpoint_uses_local_storage(
 
     uploaded = client.post(
         f"/api/v1/candidates/{candidate_id}/resumes",
-        files={"file": ("resume.pdf", b"%PDF-1.7\\nsynthetic", "application/pdf")},
+        files={"file": ("resume.pdf", b"%PDF-1.7\nsynthetic", "application/pdf")},
     )
     assert uploaded.status_code == 201
     metadata = uploaded.json()
@@ -142,3 +142,46 @@ def test_resume_upload_endpoint_uses_local_storage(
     listed = client.get(f"/api/v1/candidates/{candidate_id}/resumes")
     assert listed.status_code == 200
     assert [item["id"] for item in listed.json()] == [metadata["id"]]
+
+def test_resume_parse_and_review_endpoints(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    from vacancyx.api.routes import resumes as resume_routes
+
+    monkeypatch.setattr(resume_routes, "get_settings", lambda: Settings(storage_dir=tmp_path))
+    from vacancyx.api.routes import resume_parsing as parsing_routes
+
+    monkeypatch.setattr(parsing_routes, "get_settings", lambda: Settings(storage_dir=tmp_path))
+    created = client.post(
+        "/api/v1/candidates",
+        json={"display_name": "Synthetic Parser API Candidate"},
+    )
+    candidate_id = created.json()["id"]
+    uploaded = client.post(
+        f"/api/v1/candidates/{candidate_id}/resumes",
+        files={
+            "file": (
+                "resume.txt",
+                b"Backend Engineer\nperson@example.com\n",
+                "text/plain",
+            )
+        },
+    )
+    assert uploaded.status_code == 201
+    resume_id = uploaded.json()["id"]
+
+    parsed = client.post(f"/api/v1/resumes/{resume_id}/parse")
+    assert parsed.status_code == 200
+    assert parsed.json()["parse_status"] == "parsed"
+    assert parsed.json()["parsed_content"]["suggested_fields"]["emails"] == [
+        "person@example.com"
+    ]
+
+    reviewed = client.patch(
+        f"/api/v1/resumes/{resume_id}/parse/review",
+        json={"display_name": "Reviewed Candidate", "skills": ["Python"]},
+    )
+    assert reviewed.status_code == 200
+    assert reviewed.json()["parsed_content"]["reviewed_fields"]["display_name"] == (
+        "Reviewed Candidate"
+    )

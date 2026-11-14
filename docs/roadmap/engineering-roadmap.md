@@ -7,7 +7,7 @@ Sequential delivery: one active branch at a time. Complete, test, document, PR, 
 | 0 Blueprint | Complete | PRD, scope, architecture, ADRs, data model, security, reliability, tests, roadmap | Docs consistent, no personal data, open decisions explicit |
 | 1 Foundation | Complete | Packaging, backend/frontend skeleton, config, env example, ignore rules, CI, developer commands | Clean setup; lint/type/test; CI green; secrets ignored |
 | 2 Persistence | Complete | Entities, SQLAlchemy, repositories, Alembic, SQLite, transactions, online backup/restore | Empty DB migration; constraints/rollback; backup restore smoke test |
-| 3 Profiles | In progress | Candidate/resume versioning, parser, answer library | Multiple synthetic profiles; safe upload; editable parse output |
+| 3 Profiles | In progress | Candidate profile API, secure resume storage, local parser/review, answer library | Multiple synthetic profiles; safe upload; editable parse output |
 | 4 Source framework | Adapter contract, config schema, rate limiter, HTTP policy, contract tests | Fake adapter passes; adding source does not change matching |
 | 5 Discovery | Pagination, observations, normalization, canonical identity, dedupe | Idempotent ingestion; partial failure preserved; limits honored |
 | 6 Matching | Versioned rules, hard eligibility, explainable score, unknown semantics | Curated decision tests and explanations pass |
