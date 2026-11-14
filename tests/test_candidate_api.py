@@ -136,8 +136,8 @@ def test_resume_upload_endpoint_uses_local_storage(
     assert metadata["candidate_id"] == candidate_id
     assert metadata["original_filename"] == "resume.pdf"
     assert metadata["parse_status"] == "pending"
-    assert (tmp_path / metadata["id"]).exists() is False
-    assert (tmp_path / "resumes").is_dir()
+    assert "storage_key" not in metadata
+    assert len(list((tmp_path / "resumes").glob("*.pdf"))) == 1
 
     listed = client.get(f"/api/v1/candidates/{candidate_id}/resumes")
     assert listed.status_code == 200
