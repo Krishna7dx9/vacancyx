@@ -13,7 +13,7 @@ from vacancyx.api.schemas.answers import (
     CandidateAnswerRevisionRead,
 )
 from vacancyx.db.session import get_session
-from vacancyx.models.candidate_answers import CandidateAnswer
+from vacancyx.models.candidate_answers import CandidateAnswer, CandidateAnswerRevision
 from vacancyx.services.answers import CandidateAnswerService
 
 router = APIRouter(prefix="/candidates/{candidate_id}/answers", tags=["candidate-answers"])
@@ -99,7 +99,7 @@ def update_answer(
 @router.get("/{answer_id}/revisions", response_model=list[CandidateAnswerRevisionRead])
 def list_answer_revisions(
     candidate_id: str, answer_id: str, session: SessionDep
-) -> list[CandidateAnswerRevisionRead]:
+) -> list[CandidateAnswerRevision]:
     """Return immutable revision snapshots for a candidate-owned answer."""
     revisions = CandidateAnswerService(session).list_revisions(
         answer_id=answer_id, candidate_id=candidate_id
