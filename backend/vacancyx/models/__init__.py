@@ -15,6 +15,16 @@ from vacancyx.models.entities import (
 )
 
 __all__ = [
-    "CandidateAnswer", "CandidateAnswerRevision", "Application", "ApplicationApproval", "ApplicationEvent", "ApplicationRevision",
-    "AutomationTask", "CandidateProfile", "Job", "JobObservation", "Resume", "SearchProfile",
+    "Application",
+    "ApplicationApproval",
+    "ApplicationEvent",
+    "ApplicationRevision",
+    "AutomationTask",
+    "CandidateAnswer",
+    "CandidateAnswerRevision",
+    "CandidateProfile",
+    "Job",
+    "JobObservation",
+    "Resume",
+    "SearchProfile",
 ]
