@@ -39,7 +39,10 @@ def run_migrations_online() -> None:
             context.run_migrations()
         return
 
-    engine = build_engine(config.get_main_option("sqlalchemy.url"))
+    database_url = config.get_main_option("sqlalchemy.url")
+    if database_url is None:
+        raise RuntimeError("The database URL must be configured before running migrations.")
+    engine = build_engine(database_url)
     try:
         with engine.connect() as connection:
             context.configure(
