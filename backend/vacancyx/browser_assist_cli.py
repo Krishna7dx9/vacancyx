@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import argparse
-from typing import Sequence
+from collections.abc import Sequence
 from urllib.parse import urlsplit
 
 from sqlalchemy import select
