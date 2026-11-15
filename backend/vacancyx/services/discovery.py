@@ -160,6 +160,8 @@ class JobDiscoveryService:
             if len(page.items) > config.page_size:
                 errors.append("source_page_limit_exceeded")
                 break
+            if self._heartbeat is not None and not self._heartbeat():
+                raise RuntimeError("Discovery worker lease was lost before page persistence.")
 
             try:
                 canonical_urls = tuple(
