@@ -111,7 +111,13 @@ class JobDiscoveryService:
         self._gates: dict[str, SourceExecutionGate] = {}
 
     async def discover_source(self, source_key: str) -> DiscoverySummary:
-        """Fetch at most the configured page count and preserve already committed pages."""
+        """Fetch bounded pages using a dedicated session with no caller-owned transaction.
+
+        Each page is committed independently so later source failures cannot roll back
+        earlier pages. Callers must not share this session with unrelated unit-of-work work.
+        """
+        if self._session.in_transaction():
+            raise RuntimeError("Discovery requires a session with no active transaction.")
         adapter, config = self._registry.get(source_key)
         gate = self._gates.get(source_key)
         if gate is None:
