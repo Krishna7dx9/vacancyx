@@ -45,6 +45,14 @@ def test_discovery_sources_and_idempotent_enqueue(workspace, monkeypatch) -> Non
     assert {item["id"] for item in repeated.json()["items"]} == {
         item["id"] for item in items
     }
+    conflicting_reuse = client.post(
+        "/api/v1/discovery/tasks",
+        json={
+            "source_keys": ["greenhouse-acme"],
+            "idempotency_key": "manual-refresh-001",
+        },
+    )
+    assert conflicting_reuse.status_code == 409
 
     listed = client.get("/api/v1/discovery/tasks")
     assert listed.status_code == 200
