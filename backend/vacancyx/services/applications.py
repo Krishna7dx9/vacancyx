@@ -140,6 +140,8 @@ class ApplicationService:
         application = self.get(candidate_id, application_id)
         if application.status in {"submitting", "submitted", "uncertain", "withdrawn"}:
             raise ApplicationConflictError("This application can no longer be edited.")
+        was_approved = application.status == "approved"
+        previous_revision = application.current_revision
         current = application.revisions[-1]
         snapshot = dict(current.content_snapshot)
         selected_resume_id = resume_id if resume_id_supplied else application.resume_id
@@ -162,8 +164,17 @@ class ApplicationService:
             self._add_event(
                 application.id,
                 "content_revised",
-                {"revision": next_revision, "previous_revision": next_revision - 1},
+                {"revision": next_revision, "previous_revision": previous_revision},
             )
+            if was_approved:
+                self._add_event(
+                    application.id,
+                    "approval_invalidated",
+                    {
+                        "revision": previous_revision,
+                        "reason": "application_content_revised",
+                    },
+                )
             self.session.flush()
         self.session.commit()
         self.session.refresh(application)
