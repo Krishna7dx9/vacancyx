@@ -107,7 +107,7 @@ def test_lease_heartbeat_and_completion_are_fenced(session_factory) -> None:
 
 
 def test_retryable_failure_uses_bounded_backoff_and_exhausts_attempts(session_factory) -> None:
-    task_id = enqueue(session_factory, max_attempts=2)
+    task_id = enqueue(session_factory, max_attempts=3)
     now = datetime(2026, 1, 1, tzinfo=UTC)
 
     with session_factory() as session, session.begin():
@@ -122,7 +122,7 @@ def test_retryable_failure_uses_bounded_backoff_and_exhausts_attempts(session_fa
             error_message="temporary failure",
             retryable=True,
             base_delay_seconds=10,
-            max_delay_seconds=30,
+            max_delay_seconds=15,
             now=now + timedelta(seconds=1),
         )
 
@@ -132,9 +132,6 @@ def test_retryable_failure_uses_bounded_backoff_and_exhausts_attempts(session_fa
     assert waiting.lease_token is None
 
     with session_factory() as session, session.begin():
-        assert TaskRepository(session).claim_next(
-            worker_id="worker-b", now=now + timedelta(seconds=10)
-        ) is None
         second = TaskRepository(session).claim_next(
             worker_id="worker-b", now=now + timedelta(seconds=11)
         )
@@ -145,18 +142,44 @@ def test_retryable_failure_uses_bounded_backoff_and_exhausts_attempts(session_fa
         assert TaskRepository(session).fail(
             task_id=task_id,
             lease_token=second_token,
-            error_code="still_failing",
-            error_message="retry limit reached",
+            error_code="still_temporary",
+            error_message="backoff capped at fifteen seconds",
             retryable=True,
             base_delay_seconds=10,
-            max_delay_seconds=30,
+            max_delay_seconds=15,
             now=now + timedelta(seconds=12),
+        )
+
+    capped = read_task(session_factory, task_id)
+    assert capped.state == "retry_wait"
+    assert capped.available_at.replace(tzinfo=UTC) == now + timedelta(seconds=27)
+
+    with session_factory() as session, session.begin():
+        assert TaskRepository(session).claim_next(
+            worker_id="worker-c", now=now + timedelta(seconds=26)
+        ) is None
+        third = TaskRepository(session).claim_next(
+            worker_id="worker-c", now=now + timedelta(seconds=27)
+        )
+        assert third is not None
+        assert third.attempts == 3
+        third_token = third.lease_token
+        assert third_token is not None
+        assert TaskRepository(session).fail(
+            task_id=task_id,
+            lease_token=third_token,
+            error_code="retry_limit_reached",
+            error_message="no attempts remain",
+            retryable=True,
+            base_delay_seconds=10,
+            max_delay_seconds=15,
+            now=now + timedelta(seconds=28),
         )
 
     failed = read_task(session_factory, task_id)
     assert failed.state == "failed"
-    assert failed.attempts == 2
-    assert failed.last_error_code == "still_failing"
+    assert failed.attempts == 3
+    assert failed.last_error_code == "retry_limit_reached"
 
 
 def test_expired_lease_is_recovered_and_old_worker_is_fenced(session_factory) -> None:
