@@ -332,7 +332,20 @@ class ApplicationBatchService:
                 or current.revision != item.revision
                 or current.content_hash != item.content_hash
             )
-            readiness = current.content_snapshot.get("readiness", {}) if current else {}
+            reviewed_revision = next(
+                (
+                    revision
+                    for revision in application.revisions
+                    if revision.revision == item.revision
+                ),
+                None,
+            )
+            reviewed_snapshot = (
+                reviewed_revision.content_snapshot if reviewed_revision is not None else None
+            )
+            readiness = (
+                reviewed_snapshot.get("readiness", {}) if reviewed_snapshot is not None else {}
+            )
             items.append(
                 {
                     "id": item.id,
@@ -348,6 +361,7 @@ class ApplicationBatchService:
                     "job_title": application.job.title,
                     "readiness_status": readiness.get("status"),
                     "missing_fields": readiness.get("missing_fields", []),
+                    "content_snapshot": reviewed_snapshot,
                 }
             )
         return {
