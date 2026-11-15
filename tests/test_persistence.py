@@ -181,7 +181,7 @@ def test_alembic_upgrade_creates_expected_schema(tmp_path) -> None:
             for index in inspector.get_indexes("application_batch_items")
             if index["name"] == "uq_application_batch_items_pending_application"
         )
-        assert pending_index["unique"] is True
+        assert pending_index["unique"] == 1
         assert pending_index["column_names"] == ["application_id"]
         assert {fk["referred_table"] for fk in inspector.get_foreign_keys("applications")} == {
             "candidate_profiles",
