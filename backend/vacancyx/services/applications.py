@@ -6,7 +6,7 @@ import hashlib
 import json
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
@@ -51,11 +51,11 @@ class ApplicationService:
             .options(selectinload(Application.revisions))
             .order_by(Application.updated_at.desc(), Application.id)
         )
-        total = len(
-            self.session.scalars(
-                select(Application.id).where(Application.candidate_id == candidate_id)
-            ).all()
-        )
+        total = self.session.scalar(
+            select(func.count()).select_from(Application).where(
+                Application.candidate_id == candidate_id
+            )
+        ) or 0
         items = list(self.session.scalars(query.limit(limit).offset(offset)).all())
         for item in items:
             item.revisions.sort(key=lambda revision: revision.revision)
@@ -98,7 +98,9 @@ class ApplicationService:
                 Application.job_id == job_id,
             )
         ):
-            raise ApplicationConflictError("An application already exists for this candidate and job.")
+            raise ApplicationConflictError(
+                "An application already exists for this candidate and job."
+            )
         resume = self._owned_resume(candidate_id, resume_id)
         answers = self._owned_answers(candidate_id, answer_ids)
         snapshot = self._build_snapshot(candidate, job, resume, answers, custom_fields)
@@ -116,7 +118,9 @@ class ApplicationService:
                 self._add_revision(application, snapshot, resume.id if resume else None)
                 self._add_event(application.id, "prepared", {"revision": 1})
                 self.session.flush()
+            self.session.commit()
         except IntegrityError as error:
+            self.session.rollback()
             raise ApplicationConflictError(
                 "An application already exists for this candidate and job."
             ) from error
@@ -129,6 +133,7 @@ class ApplicationService:
         candidate_id: str,
         application_id: str,
         resume_id: str | None,
+        resume_id_supplied: bool,
         answer_ids: list[str] | None,
         custom_fields: dict[str, str] | None,
     ) -> Application:
@@ -137,11 +142,8 @@ class ApplicationService:
             raise ApplicationConflictError("This application can no longer be edited.")
         current = application.revisions[-1]
         snapshot = dict(current.content_snapshot)
-        selected_resume_id = application.resume_id if resume_id is None else resume_id
-        if resume_id is not None or application.resume_id is not None:
-            resume = self._owned_resume(candidate_id, selected_resume_id)
-        else:
-            resume = None
+        selected_resume_id = resume_id if resume_id_supplied else application.resume_id
+        resume = self._owned_resume(candidate_id, selected_resume_id)
         if answer_ids is not None:
             answers = self._owned_answers(candidate_id, answer_ids)
             snapshot["answers"] = self._answer_snapshots(answers)
@@ -160,6 +162,7 @@ class ApplicationService:
                 {"revision": next_revision, "previous_revision": next_revision - 1},
             )
             self.session.flush()
+        self.session.commit()
         self.session.refresh(application)
         return self.get(candidate_id, application_id)
 
