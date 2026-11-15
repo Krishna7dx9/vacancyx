@@ -1,9 +1,7 @@
 """Candidate-owned search profile and match API contracts."""
 
 from datetime import datetime
-from typing import Literal
-
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from vacancyx.matching.criteria import MatchCriteria
 from vacancyx.matching.engine import MatchResult
@@ -17,6 +15,14 @@ class SearchProfileCreate(BaseModel):
     criteria: MatchCriteria
     is_enabled: bool = True
 
+    @field_validator("name")
+    @classmethod
+    def normalize_name(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("Search profile name must not be blank.")
+        return normalized
+
 
 class SearchProfilePatch(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -24,6 +30,30 @@ class SearchProfilePatch(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=120)
     criteria: MatchCriteria | None = None
     is_enabled: bool | None = None
+
+    @field_validator("name")
+    @classmethod
+    def normalize_patch_name(cls, value: str | None) -> str:
+        if value is None:
+            raise ValueError("Search profile name cannot be null.")
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("Search profile name must not be blank.")
+        return normalized
+
+    @field_validator("criteria")
+    @classmethod
+    def criteria_cannot_be_null(cls, value: MatchCriteria | None) -> MatchCriteria:
+        if value is None:
+            raise ValueError("Search criteria cannot be null.")
+        return value
+
+    @field_validator("is_enabled")
+    @classmethod
+    def enabled_cannot_be_null(cls, value: bool | None) -> bool:
+        if value is None:
+            raise ValueError("is_enabled cannot be null.")
+        return value
 
 
 class SearchProfileRead(BaseModel):
