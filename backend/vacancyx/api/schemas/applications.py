@@ -25,11 +25,12 @@ def _validate_custom_fields(values: dict[str, str]) -> dict[str, str]:
 
 
 def _validate_answer_ids(values: list[str]) -> list[str]:
-    if len(values) != len(set(values)):
-        raise ValueError("answer_ids must not contain duplicates.")
-    if any(not value.strip() or len(value) > 36 for value in values):
+    normalized = [value.strip() for value in values]
+    if any(not value or len(value) > 36 for value in normalized):
         raise ValueError("Each answer ID must contain 1 to 36 characters.")
-    return values
+    if len(normalized) != len(set(normalized)):
+        raise ValueError("answer_ids must not contain duplicates.")
+    return normalized
 
 
 class ApplicationPrepare(BaseModel):
