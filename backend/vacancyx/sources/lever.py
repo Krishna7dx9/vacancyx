@@ -105,10 +105,20 @@ class LeverPostingsAdapter:
             }
             salary_min = self._optional_int(salary.get("min")) if annual_salary else None
             salary_max = self._optional_int(salary.get("max")) if annual_salary else None
+            if (
+                salary_min is not None
+                and salary_max is not None
+                and salary_max < salary_min
+            ):
+                salary_min = None
+                salary_max = None
             currency = salary.get("currency")
             salary_currency = (
                 currency.upper()
-                if annual_salary and isinstance(currency, str) and len(currency) == 3
+                if annual_salary
+                and (salary_min is not None or salary_max is not None)
+                and isinstance(currency, str)
+                and len(currency) == 3
                 else None
             )
             published_at = self._published_at(raw.get("createdAt"))
