@@ -89,7 +89,7 @@ class TaskRepository:
             ):
                 raise ValueError(
                     "idempotency_key is already used for a different task request."
-                ) from error
+                )
             return existing
 
         task = AutomationTask(
@@ -104,7 +104,7 @@ class TaskRepository:
                 self._session.add(task)
                 self._session.flush()
             return task
-        except IntegrityError as error:
+        except IntegrityError:
             existing = self._session.scalar(
                 select(AutomationTask).where(AutomationTask.idempotency_key == normalized_key)
             )
@@ -117,7 +117,7 @@ class TaskRepository:
             ):
                 raise ValueError(
                     "idempotency_key is already used for a different task request."
-                )
+                ) from None
             return existing
 
     def claim_next(
