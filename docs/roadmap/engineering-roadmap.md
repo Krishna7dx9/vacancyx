@@ -8,8 +8,8 @@ Sequential delivery: one active branch at a time. Complete, test, document, PR, 
 | 1 Foundation | Complete | Packaging, backend/frontend skeleton, config, env example, ignore rules, CI, developer commands | Clean setup; lint/type/test; CI green; secrets ignored |
 | 2 Persistence | Complete | Entities, SQLAlchemy, repositories, Alembic, SQLite, transactions, online backup/restore | Empty DB migration; constraints/rollback; backup restore smoke test |
 | 3 Profiles | Complete | Candidate profile API, secure resume storage, local parser/review, versioned candidate answer library | Multiple synthetic profiles; safe upload; editable parse output; answer ownership and immutable revision history tested |
-| 4 Source framework | In progress | Adapter protocol, normalized listing contract, validated source config, source registry, HTTPS host policy, timeout/concurrency/rate gate, fake adapter contract tests | Fake adapter passes; unsafe URLs rejected; limits enforced; adding a source does not change matching |
-| 5 Discovery | Planned | Pagination, observations, normalization, canonical identity, dedupe | Idempotent ingestion; partial failure preserved; limits honored |
+| 4 Source framework | Complete | Adapter protocol, normalized listing contract, validated source config, source registry, HTTPS host policy, timeout/concurrency/rate gate, fake adapter contract tests | Fake adapter passes; unsafe URLs rejected; limits enforced; adding a source does not change matching |
+| 5 Discovery | In progress | Bounded pagination, page-atomic persistence, source observations, canonical HTTPS URL identity, cross-source deduplication, safe partial outcomes | Idempotent ingestion; partial failure preserved; limits honored |
 | 6 Matching | Planned | Versioned rules, hard eligibility, explainable score, unknown semantics | Curated decision tests and explanations pass |
 | 7 API/UI | Planned | Versioned REST, filters, errors, dashboard, local auth boundary | Contracts pass; ownership enforced; long work not in HTTP |
 | 8 Preparation | Planned | Immutable revisions, resume/answer selection, readiness | Edits create revisions; unknown answers flagged |
