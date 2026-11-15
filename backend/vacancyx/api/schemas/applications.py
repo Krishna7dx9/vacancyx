@@ -6,6 +6,32 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
+def _validate_custom_fields(values: dict[str, str]) -> dict[str, str]:
+    if len(values) > 100:
+        raise ValueError("At most 100 custom fields are allowed.")
+    total_characters = 0
+    normalized: dict[str, str] = {}
+    for key, value in values.items():
+        name = key.strip()
+        if not name or len(name) > 120:
+            raise ValueError("Custom field names must contain 1 to 120 characters.")
+        if len(value) > 4_000:
+            raise ValueError("Custom field values cannot exceed 4,000 characters.")
+        total_characters += len(name) + len(value)
+        normalized[name] = value
+    if total_characters > 20_000:
+        raise ValueError("Custom fields exceed the 20,000-character total limit.")
+    return normalized
+
+
+def _validate_answer_ids(values: list[str]) -> list[str]:
+    if len(values) != len(set(values)):
+        raise ValueError("answer_ids must not contain duplicates.")
+    if any(not value.strip() or len(value) > 36 for value in values):
+        raise ValueError("Each answer ID must contain 1 to 36 characters.")
+    return values
+
+
 class ApplicationPrepare(BaseModel):
     """Create a prepared application from candidate-owned material."""
 
@@ -16,12 +42,30 @@ class ApplicationPrepare(BaseModel):
     answer_ids: list[str] = Field(default_factory=list, max_length=100)
     custom_fields: dict[str, str] = Field(default_factory=dict, max_length=100)
 
+    @field_validator("job_id")
+    @classmethod
+    def validate_job_id(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("job_id cannot be blank.")
+        return normalized
+
+    @field_validator("resume_id")
+    @classmethod
+    def validate_resume_id(cls, value: str | None) -> str | None:
+        if value is not None and (not value.strip() or len(value) > 36):
+            raise ValueError("resume_id must contain 1 to 36 characters.")
+        return value
+
     @field_validator("answer_ids")
     @classmethod
-    def answer_ids_must_be_unique(cls, values: list[str]) -> list[str]:
-        if len(values) != len(set(values)):
-            raise ValueError("answer_ids must not contain duplicates")
-        return values
+    def validate_answers(cls, values: list[str]) -> list[str]:
+        return _validate_answer_ids(values)
+
+    @field_validator("custom_fields")
+    @classmethod
+    def validate_fields(cls, values: dict[str, str]) -> dict[str, str]:
+        return _validate_custom_fields(values)
 
 
 class ApplicationUpdate(BaseModel):
@@ -33,12 +77,26 @@ class ApplicationUpdate(BaseModel):
     answer_ids: list[str] | None = Field(default=None, max_length=100)
     custom_fields: dict[str, str] | None = Field(default=None, max_length=100)
 
+    @field_validator("resume_id")
+    @classmethod
+    def validate_resume_id(cls, value: str | None) -> str | None:
+        if value is not None and (not value.strip() or len(value) > 36):
+            raise ValueError("resume_id must contain 1 to 36 characters.")
+        return value
+
     @field_validator("answer_ids")
     @classmethod
-    def answer_ids_must_be_unique(cls, values: list[str] | None) -> list[str] | None:
-        if values is not None and len(values) != len(set(values)):
-            raise ValueError("answer_ids must not contain duplicates")
-        return values
+    def validate_answers(cls, values: list[str] | None) -> list[str]:
+        if values is None:
+            raise ValueError("answer_ids cannot be null.")
+        return _validate_answer_ids(values)
+
+    @field_validator("custom_fields")
+    @classmethod
+    def validate_fields(cls, values: dict[str, str] | None) -> dict[str, str]:
+        if values is None:
+            raise ValueError("custom_fields cannot be null.")
+        return _validate_custom_fields(values)
 
 
 class ApplicationRevisionRead(BaseModel):
