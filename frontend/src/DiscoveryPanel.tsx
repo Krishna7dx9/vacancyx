@@ -154,7 +154,7 @@ function DiscoveryPanel({ onJobsRefresh }: Props) {
         <div className="empty-state discovery-empty">
           <strong>No public job boards configured.</strong>
           <span>
-            Set VACANCYX_GREENHOUSE_BOARDS or VACANCYX_LEVER_SITES in .env and restart the API. Only official public board identifiers are accepted.
+            Set VACANCYX_GREENHOUSE_BOARDS or VACANCYX_LEVER_SITES in .env and restart the API and worker. Only official public board identifiers are accepted.
           </span>
         </div>
       )}
