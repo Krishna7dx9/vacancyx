@@ -49,7 +49,9 @@ def prepare_application(
     except ApplicationNotFoundError as error:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
     except ApplicationInputError as error:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)) from error
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)
+        ) from error
     except ApplicationConflictError as error:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(error)) from error
     return _read(application)
@@ -96,11 +98,16 @@ def revise_application(
     changes = payload.model_dump(exclude_unset=True)
     if not changes:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No changes supplied.")
+    if "answer_ids" in changes and changes["answer_ids"] is None:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="answer_ids cannot be null.")
+    if "custom_fields" in changes and changes["custom_fields"] is None:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="custom_fields cannot be null.")
     try:
         application = ApplicationService(session).revise(
             candidate_id=candidate_id,
             application_id=application_id,
             resume_id=changes.get("resume_id"),
+            resume_id_supplied="resume_id" in changes,
             answer_ids=changes.get("answer_ids"),
             custom_fields=changes.get("custom_fields"),
         )
