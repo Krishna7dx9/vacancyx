@@ -5,6 +5,7 @@ from typing import Any
 from uuid import uuid4
 
 from sqlalchemy import select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from vacancyx.models import AutomationTask, CandidateProfile, Job, Resume
