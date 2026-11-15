@@ -4,6 +4,8 @@ from vacancyx.models.candidate_answers import CandidateAnswer, CandidateAnswerRe
 from vacancyx.models.entities import (
     Application,
     ApplicationApproval,
+    ApplicationBatch,
+    ApplicationBatchItem,
     ApplicationEvent,
     ApplicationRevision,
     AutomationTask,
@@ -17,6 +19,8 @@ from vacancyx.models.entities import (
 __all__ = [
     "Application",
     "ApplicationApproval",
+    "ApplicationBatch",
+    "ApplicationBatchItem",
     "ApplicationEvent",
     "ApplicationRevision",
     "AutomationTask",
