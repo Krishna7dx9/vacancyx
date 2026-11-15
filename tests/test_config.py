@@ -21,3 +21,24 @@ def test_worker_retry_maximum_cannot_be_below_base() -> None:
             worker_retry_base_delay_seconds=20,
             worker_retry_max_delay_seconds=10,
         )
+
+
+@pytest.mark.parametrize("host", ["127.0.0.1", "localhost", "::1"])
+def test_api_accepts_only_local_loopback_hosts(host: str) -> None:
+    settings = Settings(_env_file=None, api_host=host)
+    assert settings.api_host == host
+
+
+@pytest.mark.parametrize(
+    "host",
+    [
+        "0.0.0.0",
+        "::",
+        "192.168.1.20",
+        "10.0.0.5",
+        "example.com",
+    ],
+)
+def test_api_rejects_non_loopback_bindings(host: str) -> None:
+    with pytest.raises(ValidationError, match="remote access is disabled"):
+        Settings(_env_file=None, api_host=host)
