@@ -50,6 +50,48 @@ function reviewDraftFrom(
   };
 }
 
+
+function getBrowserAssistCommand(
+  candidateId: string,
+  batch: ApplicationBatch,
+): { command: string; hosts: string[]; eligibleCount: number } | null {
+  const approvedItems = batch.items.filter((item) =>
+    item.decision === "approved"
+    && !item.is_stale
+    && item.current_revision === item.revision
+    && item.current_content_hash === item.content_hash,
+  );
+  const hosts = new Set<string>();
+  for (const item of approvedItems) {
+    const canonicalUrl = item.content_snapshot?.job.canonical_url;
+    if (typeof canonicalUrl !== "string") continue;
+    try {
+      const url = new URL(canonicalUrl);
+      if (
+        url.protocol === "https:"
+        && !url.username
+        && !url.password
+        && (!url.port || url.port === "443")
+      ) {
+        hosts.add(url.hostname.toLowerCase());
+      }
+    } catch {
+      // Invalid or unsupported URLs are left for manual review.
+    }
+  }
+  if (hosts.size === 0 || approvedItems.length === 0) return null;
+  const hostArgs = [...hosts].sort().map((host) => '--allowed-host "' + host + '"');
+  const limit = Math.min(100, approvedItems.length);
+  const command = [
+    "vacancyx-apply-assist",
+    '--candidate-id "' + candidateId + '"',
+    '--batch-id "' + batch.id + '"',
+    ...hostArgs,
+    "--limit " + limit,
+  ].join(" ");
+  return { command, hosts: [...hosts].sort(), eligibleCount: approvedItems.length };
+}
+
 function ApplicationWorkflow({ candidate, jobs, onCandidateUpdated }: Props) {
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [resumeParses, setResumeParses] = useState<Record<string, ResumeParseResult>>({});
@@ -379,6 +421,30 @@ function ApplicationWorkflow({ candidate, jobs, onCandidateUpdated }: Props) {
       setError(cause instanceof Error ? cause.message : "Could not save batch decisions.");
     } finally {
       setBusy(null);
+    }
+  }
+
+
+
+  async function copyBrowserAssistCommand(batch: ApplicationBatch) {
+    const details = getBrowserAssistCommand(candidate.id, batch);
+    if (!details) {
+      setError("No current approved applications with supported HTTPS employer URLs are available in this batch.");
+      return;
+    }
+    setError("");
+    setNotice("");
+    try {
+      if (!navigator.clipboard?.writeText) {
+        throw new Error("Clipboard access is unavailable. Open VacancyX on localhost or copy the command manually.");
+      }
+      await navigator.clipboard.writeText(details.command);
+      setNotice(
+        "Copied browser-assist command for " + details.eligibleCount + " approved application(s). "
+        + "Allowed hosts: " + details.hosts.join(", ") + ". The CLI will ask OPEN/SKIP/STOP for each one.",
+      );
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not copy browser-assist command.");
     }
   }
 
@@ -766,6 +832,31 @@ function ApplicationWorkflow({ candidate, jobs, onCandidateUpdated }: Props) {
                           </div>
                         ))}
                       </div>
+
+                      {(() => {
+                        const assist = getBrowserAssistCommand(candidate.id, batch);
+                        if (!assist) return null;
+                        return (
+                          <div className="batch-browser-assist">
+                            <div>
+                              <strong>Browser-assisted batch</strong>
+                              <p className="workflow-muted">
+                                {assist.eligibleCount} current approved item(s). Allowed employer hosts:
+                                {" "}{assist.hosts.join(", ")}. Review each page and submit manually.
+                              </p>
+                              <code>{assist.command}</code>
+                            </div>
+                            <button
+                              className="button button-secondary"
+                              type="button"
+                              onClick={() => void copyBrowserAssistCommand(batch)}
+                            >
+                              Copy terminal command
+                            </button>
+                          </div>
+                        );
+                      })()}
+
                       {batch.status === "reviewing" && pendingItems.length > 0 && (
                         <div className="workflow-actions">
                           <button className="button button-primary" type="button" disabled={selected.length === 0 || busy === `batch:${batch.id}`} onClick={() => void decideBatch(batch.id, "approved")}>Approve selected</button>
