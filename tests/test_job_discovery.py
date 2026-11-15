@@ -285,6 +285,10 @@ def test_first_published_at_keeps_earliest_timezone_aware_value(db_session: Sess
 
 def test_source_listing_rejects_naive_publication_timestamp() -> None:
     with pytest.raises(ValueError, match="timezone"):
-        _listing("naive").model_copy(
-            update={"published_at": datetime(2025, 5, 1)}
+        SourceListing(
+            external_id="naive",
+            title="Backend Engineer",
+            company_name="Example Systems",
+            source_url="https://jobs.example.test/roles/naive",
+            published_at=datetime(2025, 5, 1),
         )
