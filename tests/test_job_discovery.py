@@ -258,3 +258,33 @@ def test_discovery_uses_injected_clock(db_session: Session) -> None:
     assert result.status == "completed"
     assert job is not None
     assert job.last_verified_at == fixed
+
+
+def test_first_published_at_keeps_earliest_timezone_aware_value(db_session: Session) -> None:
+    original = _listing("published", title="Backend Engineer").model_copy(
+        update={"published_at": datetime(2025, 5, 1, tzinfo=UTC)}
+    )
+    source = FixtureSource("board-one", {None: SourcePage(items=(original,))})
+    registry = _registry(source)
+    service = JobDiscoveryService(db_session, registry)
+    asyncio.run(service.discover_source("board-one"))
+
+    db_session.expire_all()
+    earlier = original.model_copy(
+        update={"published_at": datetime(2024, 5, 1, tzinfo=UTC), "title": "Senior Backend Engineer"}
+    )
+    source._pages[None] = SourcePage(items=(earlier,))
+    asyncio.run(service.discover_source("board-one"))
+
+    job = db_session.scalar(select(Job))
+    assert job is not None
+    assert job.first_published_at is not None
+    assert job.first_published_at.replace(tzinfo=UTC) == datetime(2024, 5, 1, tzinfo=UTC)
+    assert job.title == "Senior Backend Engineer"
+
+
+def test_source_listing_rejects_naive_publication_timestamp() -> None:
+    with pytest.raises(ValueError, match="timezone"):
+        _listing("naive").model_copy(
+            update={"published_at": datetime(2025, 5, 1)}
+        )
