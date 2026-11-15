@@ -156,6 +156,9 @@ class JobDiscoveryService:
             except SourcePolicyError:
                 errors.append("unsafe_source_url")
                 break
+            except ValueError:
+                errors.append("invalid_source_response")
+                break
             except Exception:
                 errors.append("source_request_failed")
                 break
