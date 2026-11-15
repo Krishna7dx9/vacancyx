@@ -7,10 +7,10 @@ from sqlalchemy.orm import Session
 
 from vacancyx.api.schemas.discovery import (
     DiscoverySourcesResponse,
+    DiscoverySourceRead,
     DiscoveryTaskCreate,
     DiscoveryTaskEnqueueResponse,
     DiscoveryTaskListResponse,
-    DiscoverySourceRead,
     TaskStatusRead,
 )
 from vacancyx.config import get_settings
@@ -108,7 +108,7 @@ def list_discovery_tasks(
         offset=offset,
     )
     return DiscoveryTaskListResponse(
-        items=[TaskStatusRead.model_validate(task) for task in tasks],
+        items=[_task_status(task) for task in tasks],
         limit=limit,
         offset=offset,
     )
