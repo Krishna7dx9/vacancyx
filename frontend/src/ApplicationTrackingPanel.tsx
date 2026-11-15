@@ -143,10 +143,14 @@ function ApplicationTrackingPanel({
       onApplicationUpdated(updated);
       setNotice("Application status updated to " + updated.status + ".");
       if (loadedApplicationIds.includes(application.id)) {
-        const events = await apiRequest<ApplicationTimelineEvent[]>(
-          candidateApplicationPath(candidateId, application.id, "/events"),
-        );
-        setEventsByApplication((current) => ({ ...current, [application.id]: events }));
+        try {
+          const events = await apiRequest<ApplicationTimelineEvent[]>(
+            candidateApplicationPath(candidateId, application.id, "/events"),
+          );
+          setEventsByApplication((current) => ({ ...current, [application.id]: events }));
+        } catch {
+          setNotice("Status was updated, but the timeline could not refresh. Reopen it to retry.");
+        }
       }
       if (action.status === "submitted") {
         setConfirmationRefs((current) => ({ ...current, [application.id]: "" }));
