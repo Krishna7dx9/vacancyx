@@ -9,6 +9,7 @@ from vacancyx.api.schemas.applications import (
     ApplicationList,
     ApplicationPrepare,
     ApplicationRead,
+    ApplicationRevisionRead,
     ApplicationUpdate,
 )
 from vacancyx.db.session import get_session
@@ -36,7 +37,7 @@ def _read(application: Application) -> ApplicationRead:
         submitted_at=application.submitted_at,
         created_at=application.created_at,
         updated_at=application.updated_at,
-        latest_revision=latest,
+        latest_revision=ApplicationRevisionRead.model_validate(latest) if latest else None,
     )
 
 
