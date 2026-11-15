@@ -196,7 +196,9 @@ def test_pagination_cycle_is_detected_after_preserving_page(db_session: Session)
             "same": SourcePage(items=(_listing("page-two"),), next_cursor="same"),
         },
     )
-    result = asyncio.run(JobDiscoveryService(db_session, _registry(source)).discover_source("board-one"))
+    result = asyncio.run(
+        JobDiscoveryService(db_session, _registry(source)).discover_source("board-one")
+    )
 
     assert result.status == "partial"
     assert result.pages_fetched == 2
@@ -212,7 +214,9 @@ def test_page_limit_truncates_run_without_losing_current_page(db_session: Sessio
     registry = SourceRegistry()
     registry.register(source, _source_config("board-one", max_pages_per_run=1))
 
-    result = asyncio.run(JobDiscoveryService(db_session, registry).discover_source("board-one"))
+    result = asyncio.run(
+        JobDiscoveryService(db_session, registry).discover_source("board-one")
+    )
 
     assert result.status == "partial"
     assert result.truncated is True
@@ -225,7 +229,9 @@ def test_unsafe_listing_url_rejects_entire_page(db_session: Session) -> None:
         "board-one",
         {None: SourcePage(items=(_listing("unsafe", "http://jobs.example.test/role/1"),))},
     )
-    result = asyncio.run(JobDiscoveryService(db_session, _registry(source)).discover_source("board-one"))
+    result = asyncio.run(
+        JobDiscoveryService(db_session, _registry(source)).discover_source("board-one")
+    )
 
     assert result.status == "failed"
     assert result.error_codes == ("unsafe_listing_url",)
@@ -240,7 +246,9 @@ def test_adapter_cannot_exceed_configured_page_size(db_session: Session) -> None
     registry = SourceRegistry()
     registry.register(source, _source_config("board-one", page_size=1))
 
-    result = asyncio.run(JobDiscoveryService(db_session, registry).discover_source("board-one"))
+    result = asyncio.run(
+        JobDiscoveryService(db_session, registry).discover_source("board-one")
+    )
 
     assert result.status == "failed"
     assert result.error_codes == ("source_page_limit_exceeded",)
@@ -284,7 +292,9 @@ def test_first_published_at_keeps_earliest_timezone_aware_value(db_session: Sess
     job = db_session.scalar(select(Job))
     assert job is not None
     assert job.first_published_at is not None
-    assert job.first_published_at.replace(tzinfo=UTC) == datetime(2024, 5, 1, tzinfo=UTC)
+    assert job.first_published_at.replace(tzinfo=UTC) == datetime(
+        2024, 5, 1, tzinfo=UTC
+    )
     assert job.title == "Senior Backend Engineer"
 
 
