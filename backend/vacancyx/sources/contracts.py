@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Protocol
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class SourceCapabilities(BaseModel):
@@ -35,6 +35,13 @@ class SourceListing(BaseModel):
     salary_max: int | None = Field(default=None, ge=0)
     salary_currency: str | None = Field(default=None, min_length=3, max_length=3)
     published_at: datetime | None = None
+
+    @field_validator("published_at")
+    @classmethod
+    def require_timezone_for_published_at(cls, value: datetime | None) -> datetime | None:
+        if value is not None and value.utcoffset() is None:
+            raise ValueError("published_at must include a timezone.")
+        return value
 
 
 class SourcePage(BaseModel):
