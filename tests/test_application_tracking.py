@@ -3,7 +3,6 @@
 from collections.abc import Iterator
 from datetime import UTC, datetime
 
-import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
@@ -13,7 +12,6 @@ from vacancyx.db.base import Base
 from vacancyx.db.session import get_session
 from vacancyx.main import create_app
 from vacancyx.models import (
-    ApplicationApproval,
     ApplicationEvent,
     Job,
     Resume,
