@@ -188,7 +188,10 @@ class TaskWorker:
                 retryable=True,
             )
         except Exception as error:
-            logger.exception("Task handler raised an unexpected exception", extra={"task_id": claim.id})
+            logger.exception(
+                "Task handler raised an unexpected exception",
+                extra={"task_id": claim.id},
+            )
             self._record_failure(
                 claim,
                 error_code="unhandled_task_error",
@@ -286,7 +289,7 @@ def build_default_registry() -> TaskHandlerRegistry:
 
 
 def main() -> None:
-    """Run one worker process; Ctrl+C stops polling without interrupting a task transaction."""
+    """Run a worker process; interrupted tasks are recovered after their leases expire."""
     settings = get_settings()
     parser = argparse.ArgumentParser(description="Run the local VacancyX durable task worker.")
     parser.add_argument(
@@ -303,7 +306,10 @@ def main() -> None:
         "--poll-interval",
         type=float,
         default=None,
-        help="Seconds to wait when the queue is empty (defaults to VACANCYX_WORKER_POLL_INTERVAL_SECONDS).",
+        help=(
+            "Seconds to wait when the queue is empty "
+            "(defaults to VACANCYX_WORKER_POLL_INTERVAL_SECONDS)."
+        ),
     )
     args = parser.parse_args()
     logging.basicConfig(
@@ -322,7 +328,12 @@ def main() -> None:
         worker.run_once()
         return
     try:
-        worker.run_forever(poll_interval_seconds=args.poll_interval if args.poll_interval is not None else settings.worker_poll_interval_seconds)
+        poll_interval = (
+            args.poll_interval
+            if args.poll_interval is not None
+            else settings.worker_poll_interval_seconds
+        )
+        worker.run_forever(poll_interval_seconds=poll_interval)
     except KeyboardInterrupt:
         logger.info("Worker shutdown requested")
 
