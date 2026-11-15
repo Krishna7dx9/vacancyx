@@ -353,7 +353,7 @@ def _discovery_handler(
                 JobDiscoveryService(
                     session,
                     source_registry,
-                    heartbeat=context.heartbeat,
+                    heartbeat=lambda: context.heartbeat(),
                 ).discover_source(source_key)
             )
 
