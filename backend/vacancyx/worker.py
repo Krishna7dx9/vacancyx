@@ -350,7 +350,11 @@ def _discovery_handler(
 
         with session_factory() as session:
             summary = asyncio.run(
-                JobDiscoveryService(session, source_registry).discover_source(source_key)
+                JobDiscoveryService(
+                    session,
+                    source_registry,
+                    heartbeat=context.heartbeat,
+                ).discover_source(source_key)
             )
 
         result: dict[str, Any] = {
