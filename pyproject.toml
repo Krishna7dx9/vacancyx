@@ -26,6 +26,7 @@ dependencies = [
 vacancyx-worker = "vacancyx.worker:main"
 vacancyx-apply-assist = "vacancyx.browser_assist_cli:main"
 vacancyx-scheduler = "vacancyx.scheduler:main"
+vacancyx-demo-seed = "vacancyx.demo_seed_cli:main"
 
 [project.optional-dependencies]
 browser = [
