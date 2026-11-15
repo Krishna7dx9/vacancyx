@@ -11,6 +11,8 @@ from typing import Literal, Self
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from vacancyx.sources.config import GreenhouseBoardSetting, LeverSiteSetting
+
 
 class Settings(BaseSettings):
     """Runtime settings loaded from environment and optional local .env file."""
@@ -36,6 +38,8 @@ class Settings(BaseSettings):
     worker_lease_seconds: int = Field(default=60, ge=1, le=3600)
     worker_retry_base_delay_seconds: int = Field(default=5, ge=0, le=3600)
     worker_retry_max_delay_seconds: int = Field(default=300, ge=0, le=86400)
+    greenhouse_boards: list[GreenhouseBoardSetting] = Field(default_factory=list)
+    lever_sites: list[LeverSiteSetting] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_worker_retry_bounds(self) -> Self:
