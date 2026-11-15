@@ -95,12 +95,20 @@ class LeverPostingsAdapter:
 
             salary = raw.get("salaryRange")
             salary = salary if isinstance(salary, dict) else {}
-            salary_min = self._optional_int(salary.get("min"))
-            salary_max = self._optional_int(salary.get("max"))
+            interval = salary.get("interval")
+            annual_salary = isinstance(interval, str) and interval.casefold() in {
+                "year",
+                "yearly",
+                "annual",
+                "annually",
+                "per year",
+            }
+            salary_min = self._optional_int(salary.get("min")) if annual_salary else None
+            salary_max = self._optional_int(salary.get("max")) if annual_salary else None
             currency = salary.get("currency")
             salary_currency = (
                 currency.upper()
-                if isinstance(currency, str) and len(currency) == 3
+                if annual_salary and isinstance(currency, str) and len(currency) == 3
                 else None
             )
             published_at = self._published_at(raw.get("createdAt"))
