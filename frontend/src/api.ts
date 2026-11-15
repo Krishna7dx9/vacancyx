@@ -293,7 +293,15 @@ export type DiscoveryTask = {
   id: string;
   source_key: string | null;
   task_type: string;
-  state: "queued" | "running" | "retry_wait" | "succeeded" | "partially_succeeded" | "failed" | "cancelled" | "needs_attention";
+  state:
+    | "queued"
+    | "running"
+    | "retry_wait"
+    | "succeeded"
+    | "partially_succeeded"
+    | "failed"
+    | "cancelled"
+    | "needs_attention";
   attempts: number;
   max_attempts: number;
   available_at: string;
