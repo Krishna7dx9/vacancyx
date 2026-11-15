@@ -1,17 +1,18 @@
 """Tests for the idempotent synthetic VacancyX demo seed."""
 
-from collections.abc import Iterator
-
 from sqlalchemy import create_engine, select
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
+
+import pytest
 
 from vacancyx.db.base import Base
 from vacancyx.models import CandidateProfile, Job, JobObservation, SearchProfile
 from vacancyx.services.demo_seed import run_demo_seed
 
 
-def _session_factory() -> tuple[sessionmaker[Session], object]:
+def _session_factory() -> tuple[sessionmaker[Session], Engine]:
     engine = create_engine(
         "sqlite://",
         connect_args={"check_same_thread": False},
@@ -67,12 +68,8 @@ def test_demo_seed_does_not_overwrite_reserved_email_owned_by_non_demo() -> None
                     links={},
                 )
             )
-        try:
+        with pytest.raises(ValueError, match="non-demo candidate"):
             run_demo_seed(factory)
-        except ValueError as error:
-            assert "non-demo candidate" in str(error)
-        else:
-            raise AssertionError("Seed must refuse to modify a non-demo candidate.")
         with factory() as session:
             candidate = session.scalar(
                 select(CandidateProfile).where(
