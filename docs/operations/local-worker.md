@@ -1,6 +1,6 @@
-# Local durable worker
+# Local durable worker and scheduler
 
-VacancyX uses a database-backed task queue so long-running work can survive API request timeouts and process restarts. The worker is a separate local process; it does not run automatically when FastAPI starts.
+VacancyX uses a database-backed task queue so long-running work can survive API request timeouts and process restarts. The worker and recurring scheduler are separate local processes; neither starts automatically with FastAPI.
 
 ## Install and migrate
 
@@ -9,10 +9,22 @@ From the repository root:
 ```bash
 python -m pip install -e ".[dev]"
 alembic upgrade head
+```
+
+Start both processes in separate terminals:
+
+```bash
+vacancyx-scheduler
 vacancyx-worker
 ```
 
-Keep the computer and database available while the worker is running. Press Ctrl+C to stop the process. If interruption happens during a handler, its lease expires and the task becomes eligible for recovery; handlers must make side effects idempotent.
+The scheduler checks due schedules every 30 seconds by default and enqueues idempotent discovery tasks. The worker claims and executes those tasks. Keep the computer and database available while both processes are running. Press Ctrl+C to stop either process. If the computer is off, no schedule runs; after restart, each overdue schedule is coalesced into one run rather than replaying every missed interval.
+
+## Recurring discovery schedules
+
+Create a schedule through `POST /api/v1/discovery/schedules` with a name, configured source keys, and an interval in seconds (minimum 60 seconds, maximum 30 days). A new schedule is due immediately. List schedules with `GET /api/v1/discovery/schedules`, pause or resume with `PATCH /api/v1/discovery/schedules/{id}` using `{"is_enabled": false}` or `true`, and delete with `DELETE /api/v1/discovery/schedules/{id}`. Deleting a schedule does not cancel tasks already queued.
+
+Schedule runs are claimed using a conditional update of the expected run number and next-run timestamp. The schedule advancement and task enqueue happen in one database transaction. Task idempotency keys include schedule ID, run number, and source key. Missing or disabled source configuration is exposed as `source_not_configured`; available configured sources can still run.
 
 ## Diagnostic task
 
@@ -40,6 +52,9 @@ The worker should claim this task, finish it as `succeeded`, and persist the ech
 - `vacancyx-worker --once`: claim at most one available task, then exit.
 - `vacancyx-worker --worker-id my-worker`: set an explicit worker identifier.
 - `vacancyx-worker --poll-interval 1.5`: override the idle polling delay.
+- `vacancyx-scheduler`: check recurring schedules every 30 seconds.
+- `vacancyx-scheduler --once`: enqueue due schedules once, then exit.
+- `vacancyx-scheduler --poll-interval 10`: check schedules every 10 seconds.
 
 Environment settings use the `VACANCYX_` prefix:
 
@@ -56,8 +71,8 @@ Retryable failures use bounded exponential backoff. Permanent failures move to `
 
 ## Current limits
 
-- This is a local worker runtime, not an always-on hosted service. The computer must remain on.
-- With no source configuration, only the diagnostic echo handler is registered. Configure public boards to enable the discovery handler; browser submission handlers remain a separate future integration.
+- This is a local worker/scheduler runtime, not an always-on hosted service. The computer must remain on and both processes must be running.
+- With no source configuration, only the diagnostic echo handler is registered. Configure public boards to enable the discovery handler; browser application assistance remains a separate user-driven workflow.
 - Task handlers must make external side effects idempotent using the task idempotency key. A process can crash after an external side effect but before saving success.
 - No task payloads are written to application logs. Keep personal data out of diagnostic task payloads.
 - The queue is SQLite-first. A multi-host worker fleet should wait until PostgreSQL and concurrency/load tests justify it.
