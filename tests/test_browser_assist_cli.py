@@ -8,11 +8,13 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from vacancyx.browser_assist_cli import _load_approved_application
+from vacancyx.browser_assist_cli import _load_approved_application, _load_approved_batch
 from vacancyx.db.base import Base
 from vacancyx.models import (
     Application,
     ApplicationApproval,
+    ApplicationBatch,
+    ApplicationBatchItem,
     ApplicationRevision,
     CandidateProfile,
     Job,
@@ -111,3 +113,85 @@ def test_cli_refuses_approval_with_stale_content_hash(approved_application) -> N
         approval.content_hash = "b" * 64
     with pytest.raises(ValueError, match="matching approval"):
         _load_approved_application(candidate_id, application_id)
+
+
+def test_batch_loader_returns_only_exact_current_approved_items(approved_application) -> None:
+    candidate_id, application_id, factory = approved_application
+    with factory() as session, session.begin():
+        batch = ApplicationBatch(
+            candidate_id=candidate_id,
+            name="Synthetic approved batch",
+            status="completed",
+        )
+        session.add(batch)
+        session.flush()
+        session.add(
+            ApplicationBatchItem(
+                batch_id=batch.id,
+                application_id=application_id,
+                revision=1,
+                content_hash="a" * 64,
+                decision="approved",
+                decided_at=datetime.now(UTC),
+            )
+        )
+        batch_id = batch.id
+
+    records, skipped = _load_approved_batch(candidate_id, batch_id)
+    assert skipped == 0
+    assert len(records) == 1
+    assert records[0][0] == application_id
+    assert records[0][1][3] == 1
+    assert records[0][1][4] == "a" * 64
+
+
+def test_batch_loader_skips_stale_approved_items(approved_application) -> None:
+    candidate_id, application_id, factory = approved_application
+    with factory() as session, session.begin():
+        batch = ApplicationBatch(
+            candidate_id=candidate_id,
+            name="Synthetic stale batch",
+            status="completed",
+        )
+        session.add(batch)
+        session.flush()
+        session.add(
+            ApplicationBatchItem(
+                batch_id=batch.id,
+                application_id=application_id,
+                revision=1,
+                content_hash="b" * 64,
+                decision="approved",
+                decided_at=datetime.now(UTC),
+            )
+        )
+        batch_id = batch.id
+
+    with pytest.raises(ValueError, match="no current approved"):
+        _load_approved_batch(candidate_id, batch_id)
+
+
+def test_batch_loader_enforces_candidate_ownership(approved_application) -> None:
+    candidate_id, application_id, factory = approved_application
+    with factory() as session, session.begin():
+        batch = ApplicationBatch(
+            candidate_id=candidate_id,
+            name="Synthetic batch",
+            status="completed",
+        )
+        session.add(batch)
+        session.flush()
+        session.add(
+            ApplicationBatchItem(
+                batch_id=batch.id,
+                application_id=application_id,
+                revision=1,
+                content_hash="a" * 64,
+                decision="approved",
+                decided_at=datetime.now(UTC),
+            )
+        )
+        batch_id = batch.id
+
+    with pytest.raises(ValueError, match="not found"):
+        _load_approved_batch("different-candidate", batch_id)
