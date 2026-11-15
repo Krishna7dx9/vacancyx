@@ -196,7 +196,7 @@ class ResumeParseService:
             resume = self._session.get(Resume, resume_id)
             if resume is None:
                 return None
-            if resume.parse_status != "parsed" or resume.parsed_content is None:
+            if resume.parse_status not in {"parsed", "reviewed"} or resume.parsed_content is None:
                 raise ResumeParseError("Parse the resume successfully before reviewing its fields.")
             content = dict(resume.parsed_content)
             existing_review = content.get("reviewed_fields", {})
@@ -204,6 +204,7 @@ class ResumeParseService:
             merged_review.update(reviewed_fields)
             content["reviewed_fields"] = merged_review
             resume.parsed_content = content
+            resume.parse_status = "reviewed"
         return resume
 
     def _resolve_storage_path(self, storage_key: str) -> Path:
