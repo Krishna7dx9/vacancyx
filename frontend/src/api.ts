@@ -245,3 +245,27 @@ export type ApplicationBatchDecisionResponse = {
   batch: ApplicationBatch;
   results: ApplicationBatchDecisionResult[];
 };
+
+
+export type ApplicationStatusRead = {
+  id: string;
+  status: string;
+  submitted_at: string | null;
+};
+
+export type ApplicationTimelineEvent = {
+  id: string;
+  event_type: string;
+  occurred_at: string;
+  metadata_json: Record<string, unknown>;
+};
+
+export type ApplicationTimelineEventType =
+  | "assessment_scheduled"
+  | "assessment_completed"
+  | "interview_scheduled"
+  | "interview_completed"
+  | "offer_received"
+  | "offer_declined"
+  | "follow_up"
+  | "note";
