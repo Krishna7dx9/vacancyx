@@ -1,9 +1,8 @@
 """Recurring discovery schedule API contracts."""
 
 from datetime import datetime
-from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class DiscoveryScheduleCreate(BaseModel):
