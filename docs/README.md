@@ -21,5 +21,6 @@ Source of truth for product scope and engineering decisions. Update docs and tes
 - [Job discovery and ingestion](api/job-discovery.md)
 - [Explainable job matching](api/job-matching.md)
 - [Job search and candidate search profiles](api/job-search-and-profiles.md)
+- [Local workspace UI](ui/local-workspace.md)
 
 PRD defines behavior; architecture defines boundaries; ADRs record decisions, alternatives and consequences; roadmap exit criteria define completion.
