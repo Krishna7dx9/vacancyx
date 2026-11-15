@@ -27,7 +27,9 @@ Configuration is validated and rejects unknown fields, invalid limits and malfor
 
 ## Request policy
 
-Call `validate_source_url` before issuing a request. It requires HTTPS, rejects credentials, non-default ports, IP literals, localhost/single-label hosts, and hosts outside the exact or subdomain allowlist. Use `SourceExecutionGate` around each network operation to apply the configured timeout, concurrency bound and per-source minimum request interval.
+Call `validate_source_url` before issuing a request. It requires HTTPS, rejects credentials, non-default ports, IP literals, localhost/single-label hosts, and hosts outside the exact or subdomain allowlist. Use `SourceExecutionGate` around each network operation to apply the configured timeout, concurrency bound and per-source minimum request interval. HTTP adapters must not blindly follow redirects: every redirect target must be revalidated against the configured host policy.
+
+Listing URLs are stored as evidence, not fetched by the discovery service. They are independently required to be public HTTPS URLs and are canonicalized without applying the source-host allowlist, because a board may link to a legitimate employer-hosted job page.
 
 The framework does not bypass login walls, CAPTCHA, MFA, robots directives, terms, or rate limits. A source that requires prohibited access is unsupported and should be disabled or represented as a manual link.
 
@@ -35,5 +37,5 @@ The framework does not bypass login walls, CAPTCHA, MFA, robots directives, term
 
 - No live third-party source is enabled by default.
 - No scraping implementation or source credentials are bundled.
-- Pagination orchestration, observation persistence, canonical identity and deduplication are the next discovery milestone.
-- Retry decisions and `Retry-After` handling belong to the durable discovery workflow, not an unbounded retry loop inside an adapter.
+- The discovery service now handles bounded pagination, page-atomic upserts, source observations, canonical URLs and duplicate suppression.
+- Durable source-run history, scheduled retries and cross-process rate coordination belong to later worker milestones.
