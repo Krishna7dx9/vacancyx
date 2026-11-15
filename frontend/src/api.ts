@@ -291,6 +291,7 @@ export type DiscoveryTaskResult = {
 
 export type DiscoveryTask = {
   id: string;
+  source_key: string | null;
   task_type: string;
   state: "queued" | "running" | "retry_wait" | "succeeded" | "partially_succeeded" | "failed" | "cancelled" | "needs_attention";
   attempts: number;
