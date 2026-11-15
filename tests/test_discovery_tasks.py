@@ -38,6 +38,7 @@ def test_discovery_sources_and_idempotent_enqueue(workspace, monkeypatch) -> Non
     assert {item["state"] for item in items} == {"queued"}
     assert "payload" not in items[0]
     assert "idempotency_key" not in items[0]
+    assert items[0]["source_key"] == "greenhouse-acme"
 
     repeated = client.post("/api/v1/discovery/tasks", json=payload)
     assert repeated.status_code == 202
@@ -48,6 +49,10 @@ def test_discovery_sources_and_idempotent_enqueue(workspace, monkeypatch) -> Non
     listed = client.get("/api/v1/discovery/tasks")
     assert listed.status_code == 200
     assert len(listed.json()["items"]) == 2
+    assert {item["source_key"] for item in listed.json()["items"]} == {
+        "greenhouse-acme",
+        "lever-beta",
+    }
 
 
 def test_discovery_enqueue_rejects_unknown_and_unconfigured_sources(
