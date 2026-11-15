@@ -1,10 +1,10 @@
 """Unit tests for the headed browser runner's safe field inventory and fill behavior."""
 
+from vacancyx.services.browser_assist import build_fill_plan
 from vacancyx.services.browser_runner import (
     fill_planned_fields,
     portal_fields_from_metadata,
 )
-from vacancyx.services.browser_assist import build_fill_plan
 
 
 def test_portal_metadata_becomes_narrow_field_contract() -> None:
