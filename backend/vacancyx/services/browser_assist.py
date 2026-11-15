@@ -87,10 +87,15 @@ def validate_portal_url(url: str, allowed_hosts: set[str]) -> str:
 def detect_manual_interruption(page_text: str) -> tuple[str, ...]:
     """Return safety blockers that require a person to take over."""
     normalized = " ".join(page_text.casefold().split())
-    return tuple(
+    matches = [
         code for code, phrases in _BLOCKER_TERMS.items()
         if any(phrase.casefold() in normalized for phrase in phrases)
-    )
+    ]
+    # "One-time password" also contains the generic password keyword. Report
+    # the more actionable MFA reason rather than two overlapping categories.
+    if "multi_factor_required" in matches and "authentication_required" in matches:
+        matches.remove("authentication_required")
+    return tuple(matches)
 
 
 def build_fill_plan(fields: list[PortalField], candidate_snapshot: dict[str, Any]) -> FillPlan:
