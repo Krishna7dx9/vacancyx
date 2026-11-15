@@ -427,6 +427,7 @@ function ApplicationWorkflow({ candidate, jobs, onCandidateUpdated }: Props) {
 
 
   async function copyBrowserAssistCommand(batch: ApplicationBatch) {
+    if (!candidate) return;
     const details = getBrowserAssistCommand(candidate.id, batch);
     if (!details) {
       setError("No current approved applications with supported HTTPS employer URLs are available in this batch.");
