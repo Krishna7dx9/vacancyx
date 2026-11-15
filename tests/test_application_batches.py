@@ -13,7 +13,6 @@ from vacancyx.db.base import Base
 from vacancyx.db.session import get_session
 from vacancyx.main import create_app
 from vacancyx.models import (
-    Application,
     ApplicationApproval,
     ApplicationEvent,
     Job,
