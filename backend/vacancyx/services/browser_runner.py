@@ -6,6 +6,7 @@ from importlib import import_module
 from typing import Any
 
 from vacancyx.services.browser_assist import (
+    FillPlan,
     PortalField,
     build_fill_plan,
     detect_manual_interruption,
@@ -22,7 +23,6 @@ _FIELD_METADATA_SCRIPT = """elements => elements.map((element, index) => {
     : "";
   return {
     index,
-    name: String(index),
     label: labels || element.getAttribute("aria-label")
       || element.getAttribute("placeholder") || element.getAttribute("name") || "",
     field_type: element.tagName.toLowerCase() === "textarea"
@@ -59,7 +59,7 @@ def portal_fields_from_metadata(metadata: list[dict[str, Any]]) -> list[PortalFi
     ]
 
 
-def fill_planned_fields(locator: Any, plan: Any) -> int:
+def fill_planned_fields(locator: Any, plan: FillPlan) -> int:
     """Fill only planned visible fields; do not click, select, or submit controls."""
     filled = 0
     for field in plan.fields:
@@ -86,13 +86,26 @@ def run_browser_assist(
             "install vacancyx[browser] and run playwright install chromium."
         ) from error
 
-    browser = None
     result: BrowserAssistResult | None = None
     with playwright_api.sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=False)
         try:
             page = browser.new_page()
+
+            def guard_main_frame_navigation(route: Any) -> None:
+                request = route.request
+                if request.is_navigation_request() and request.frame == page.main_frame:
+                    try:
+                        validate_portal_url(request.url, allowed_hosts)
+                    except ValueError:
+                        route.abort()
+                        return
+                route.continue_()
+
+            page.route("**/*", guard_main_frame_navigation)
             page.goto(safe_url, wait_until="domcontentloaded", timeout=30_000)
+            # Check the final URL too; a redirected employer URL must remain allowlisted.
+            validate_portal_url(page.url, allowed_hosts)
             body_text = page.locator("body").inner_text(timeout=10_000)
             interruptions = detect_manual_interruption(body_text)
             if interruptions:
