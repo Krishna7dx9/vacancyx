@@ -4,7 +4,7 @@ The discovery service consumes one configured adapter at a time. It is intention
 
 ## Current service behavior
 
-Use `JobDiscoveryService(session, registry)` and await `discover_source(source_key)`. Each run:
+Use `JobDiscoveryService(session, registry)` and await `discover_source(source_key)`. Supply a dedicated SQLAlchemy session with no active caller-owned transaction; the service owns and commits one transaction per page. It rejects a session that already has an active transaction rather than accidentally committing unrelated work. Each run:
 
 1. Resolves an enabled adapter and its bounded source configuration.
 2. Requests no more than the configured page count and page size, through the source execution gate.
