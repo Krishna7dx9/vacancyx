@@ -160,10 +160,22 @@ def test_alembic_upgrade_creates_expected_schema(tmp_path) -> None:
             "applications",
             "application_revisions",
             "application_approvals",
+            "application_batches",
+            "application_batch_items",
             "application_events",
             "automation_tasks",
             "alembic_version",
         }.issubset(tables)
+        batch_foreign_keys = {
+            fk["referred_table"]
+            for fk in inspector.get_foreign_keys("application_batches")
+        }
+        assert batch_foreign_keys == {"candidate_profiles"}
+        item_foreign_keys = {
+            fk["referred_table"]
+            for fk in inspector.get_foreign_keys("application_batch_items")
+        }
+        assert item_foreign_keys == {"application_batches", "applications"}
         assert {fk["referred_table"] for fk in inspector.get_foreign_keys("applications")} == {
             "candidate_profiles",
             "jobs",

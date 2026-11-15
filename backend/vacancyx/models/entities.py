@@ -252,3 +252,59 @@ class AutomationTask(TimestampMixin, Base):
     last_error_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
     last_error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     result: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+
+
+class ApplicationBatch(TimestampMixin, Base):
+    """Candidate-owned review batch containing revision-bound application items."""
+
+    __tablename__ = "application_batches"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('reviewing', 'completed', 'cancelled')",
+            name="ck_application_batches_status",
+        ),
+        Index("ix_application_batches_candidate_created", "candidate_id", "created_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    candidate_id: Mapped[str] = mapped_column(
+        ForeignKey("candidate_profiles.id", ondelete="CASCADE"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    status: Mapped[str] = mapped_column(String(30), nullable=False, default="reviewing")
+
+    items: Mapped[list[ApplicationBatchItem]] = relationship(
+        back_populates="batch",
+        cascade="all, delete-orphan",
+        order_by="ApplicationBatchItem.created_at",
+    )
+
+
+class ApplicationBatchItem(TimestampMixin, Base):
+    """Immutable reference to the exact application revision reviewed in a batch."""
+
+    __tablename__ = "application_batch_items"
+    __table_args__ = (
+        UniqueConstraint("batch_id", "application_id", name="uq_batch_application_item"),
+        CheckConstraint(
+            "decision IN ('pending', 'approved', 'rejected', 'stale')",
+            name="ck_application_batch_items_decision",
+        ),
+        CheckConstraint("revision > 0", name="ck_application_batch_items_revision"),
+        Index("ix_application_batch_items_batch_decision", "batch_id", "decision"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    batch_id: Mapped[str] = mapped_column(
+        ForeignKey("application_batches.id", ondelete="CASCADE"), nullable=False
+    )
+    application_id: Mapped[str] = mapped_column(
+        ForeignKey("applications.id", ondelete="RESTRICT"), nullable=False
+    )
+    revision: Mapped[int] = mapped_column(Integer, nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    decision: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    batch: Mapped[ApplicationBatch] = relationship(back_populates="items")
+    application: Mapped[Application] = relationship()
