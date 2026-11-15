@@ -73,6 +73,19 @@ class ApplicationBatchService:
             raise BatchInputError("A batch cannot contain more than 100 applications.")
         if len(application_ids) != len(set(application_ids)):
             raise BatchInputError("An application can appear only once in a batch.")
+        active_item = self.session.scalar(
+            select(ApplicationBatchItem.id)
+            .join(ApplicationBatch, ApplicationBatch.id == ApplicationBatchItem.batch_id)
+            .where(
+                ApplicationBatchItem.application_id.in_(application_ids),
+                ApplicationBatchItem.decision == "pending",
+                ApplicationBatch.status == "reviewing",
+            )
+        )
+        if active_item is not None:
+            raise BatchConflictError(
+                "An application already belongs to an active review batch."
+            )
 
         applications = list(
             self.session.scalars(
