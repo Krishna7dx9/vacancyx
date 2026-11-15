@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 
 import ApplicationWorkflow from "./ApplicationWorkflow";
+import DiscoveryPanel from "./DiscoveryPanel";
 
 import {
   apiRequest,
@@ -175,8 +176,7 @@ function App() {
     }
   }
 
-  async function searchJobs(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function refreshJobs() {
     setBusy("jobs");
     setError("");
     setNotice("");
@@ -189,9 +189,15 @@ function App() {
       setMatches(null);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Job search failed.");
+      throw cause;
     } finally {
       setBusy(null);
     }
+  }
+
+  async function searchJobs(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await refreshJobs();
   }
 
   async function evaluateMatches() {
@@ -493,6 +499,7 @@ function App() {
               </div>
             )}
           </section>
+          <DiscoveryPanel onJobsRefresh={refreshJobs} />
           <ApplicationWorkflow
             candidate={selectedCandidate ?? null}
             jobs={jobs?.items ?? []}
