@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from vacancyx.api.schemas.discovery_schedules import (
@@ -48,7 +48,7 @@ def create_schedule(payload: DiscoveryScheduleCreate, session: SessionDep) -> Di
 
 @router.get("", response_model=DiscoveryScheduleList)
 def list_schedules(session: SessionDep) -> DiscoveryScheduleList:
-    """List schedules newest first with a bounded local collection size."""
+    """List the newest 200 schedules and report the total count."""
     items = list(
         session.scalars(
             select(DiscoverySchedule).order_by(
@@ -56,9 +56,10 @@ def list_schedules(session: SessionDep) -> DiscoveryScheduleList:
             ).limit(200)
         )
     )
+    total = session.scalar(select(func.count()).select_from(DiscoverySchedule)) or 0
     return DiscoveryScheduleList(
         items=[DiscoveryScheduleRead.model_validate(item) for item in items],
-        total=len(items),
+        total=total,
     )
 
 
