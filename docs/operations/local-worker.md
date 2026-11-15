@@ -12,7 +12,7 @@ alembic upgrade head
 vacancyx-worker
 ```
 
-Keep the computer and database available while the worker is running. Press Ctrl+C for a graceful stop between polling iterations. A task interrupted during execution keeps its lease until it expires; another worker can then recover it.
+Keep the computer and database available while the worker is running. Press Ctrl+C to stop the process. If interruption happens during a handler, its lease expires and the task becomes eligible for recovery; handlers must make side effects idempotent.
 
 ## Diagnostic task
 
