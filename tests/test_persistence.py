@@ -109,10 +109,16 @@ def test_task_enqueue_is_idempotent_and_claims_once(engine) -> None:
         )
         second = repository.enqueue(
             task_type="discover",
-            payload={"source": "different-payload-is-ignored"},
+            payload={"source": "sample"},
             idempotency_key="source-run:sample:synthetic",
         )
         assert first.id == second.id
+        with pytest.raises(ValueError, match="different task request"):
+            repository.enqueue(
+                task_type="discover",
+                payload={"source": "different"},
+                idempotency_key="source-run:sample:synthetic",
+            )
         task_id = first.id
 
     with Session(engine) as session, session.begin():
