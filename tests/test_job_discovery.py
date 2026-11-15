@@ -158,6 +158,7 @@ def test_repeated_ingestion_updates_observation_without_duplicate_job(
     observation_before = db_session.scalar(select(JobObservation))
     assert observation_before is not None
     first_seen = observation_before.first_seen_at
+    db_session.rollback()
 
     second = asyncio.run(service.discover_source("board-one"))
     observation_after = db_session.scalar(select(JobObservation))
@@ -168,6 +169,7 @@ def test_repeated_ingestion_updates_observation_without_duplicate_job(
     assert second.observations_updated == 1
     assert observation_after is not None
     assert observation_after.first_seen_at == first_seen
+    db_session.rollback()
     assert db_session.scalar(select(func.count()).select_from(Job)) == 1
     assert db_session.scalar(select(func.count()).select_from(JobObservation)) == 1
 
@@ -267,7 +269,8 @@ def test_discovery_uses_injected_clock(db_session: Session) -> None:
 
     assert result.status == "completed"
     assert job is not None
-    assert job.last_verified_at == fixed
+    assert job.last_verified_at is not None
+    assert job.last_verified_at.replace(tzinfo=UTC) == fixed
 
 
 def test_first_published_at_keeps_earliest_timezone_aware_value(db_session: Session) -> None:
