@@ -159,6 +159,7 @@ class TaskRepository:
                 AutomationTask.available_at <= claimed_at,
                 AutomationTask.attempts < AutomationTask.max_attempts,
             )
+            .execution_options(synchronize_session=False)
             .values(
                 state="running",
                 lease_owner=worker_id,
@@ -194,6 +195,7 @@ class TaskRepository:
                 AutomationTask.lease_token == lease_token,
                 AutomationTask.lease_expires_at > current_time,
             )
+            .execution_options(synchronize_session=False)
             .values(
                 lease_expires_at=current_time + timedelta(seconds=lease_seconds),
                 updated_at=current_time,
@@ -223,6 +225,7 @@ class TaskRepository:
                 AutomationTask.lease_token == lease_token,
                 AutomationTask.lease_expires_at > current_time,
             )
+            .execution_options(synchronize_session=False)
             .values(
                 state=state,
                 result=result,
@@ -285,6 +288,7 @@ class TaskRepository:
                 AutomationTask.lease_token == lease_token,
                 AutomationTask.lease_expires_at > current_time,
             )
+            .execution_options(synchronize_session=False)
             .values(
                 state=next_state,
                 available_at=available_at,
@@ -345,7 +349,8 @@ class TaskRepository:
                     AutomationTask.state == "running",
                     AutomationTask.lease_expires_at <= current_time,
                 )
-                .values(
+                .execution_options(synchronize_session=False)
+            .values(
                     state=next_state,
                     available_at=available_at,
                     lease_owner=None,
@@ -371,6 +376,7 @@ class TaskRepository:
                 AutomationTask.id == task_id,
                 AutomationTask.state.in_(("queued", "retry_wait", "running")),
             )
+            .execution_options(synchronize_session=False)
             .values(
                 state="cancelled",
                 lease_owner=None,
