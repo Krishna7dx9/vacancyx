@@ -11,7 +11,6 @@ from vacancyx.api.schemas.application_tracking import (
     ApplicationTimelineEventRead,
 )
 from vacancyx.db.session import get_session
-from vacancyx.models import Application
 from vacancyx.services.application_tracking import (
     ApplicationTrackingService,
     TrackingConflictError,
