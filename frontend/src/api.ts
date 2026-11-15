@@ -168,7 +168,7 @@ export type Application = {
 };
 
 async function readError(response: Response): Promise<string> {
-  let message = `Request failed (${response.status})`;
+  let message = \`Request failed (\${response.status})\`;
   try {
     const payload: { detail?: unknown } = await response.json();
     if (typeof payload.detail === "string") {
@@ -188,7 +188,7 @@ export async function apiRequest<T>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
-  const response = await fetch(`/api/v1${path}`, {
+  const response = await fetch(\`/api/v1\${path}\`, {
     ...options,
     headers: {
       "Content-Type": "application/json",
@@ -197,13 +197,14 @@ export async function apiRequest<T>(
   });
 
   if (!response.ok) throw new Error(await readError(response));
+  if (response.status === 204) return undefined as T;
   return (await response.json()) as T;
 }
 
 export async function uploadFile<T>(path: string, file: File): Promise<T> {
   const body = new FormData();
   body.append("file", file);
-  const response = await fetch(`/api/v1${path}`, { method: "POST", body });
+  const response = await fetch(\`/api/v1\${path}\`, { method: "POST", body });
   if (!response.ok) throw new Error(await readError(response));
   return (await response.json()) as T;
 }
@@ -246,7 +247,6 @@ export type ApplicationBatchDecisionResponse = {
   results: ApplicationBatchDecisionResult[];
 };
 
-
 export type ApplicationStatusRead = {
   id: string;
   status: string;
@@ -269,7 +269,6 @@ export type ApplicationTimelineEventType =
   | "offer_declined"
   | "follow_up"
   | "note";
-
 
 export type DiscoverySource = {
   source_key: string;
@@ -321,4 +320,29 @@ export type DiscoveryTaskListResponse = {
 
 export type DiscoveryTaskEnqueueResponse = {
   items: DiscoveryTask[];
+};
+
+export type DiscoverySchedule = {
+  id: string;
+  name: string;
+  source_keys: string[];
+  interval_seconds: number;
+  is_enabled: boolean;
+  next_run_at: string;
+  last_run_at: string | null;
+  run_number: number;
+  last_error_code: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type DiscoveryScheduleList = {
+  items: DiscoverySchedule[];
+  total: number;
+};
+
+export type DiscoveryScheduleCreate = {
+  name: string;
+  source_keys: string[];
+  interval_seconds: number;
 };
