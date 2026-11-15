@@ -3,8 +3,8 @@
 from fastapi import APIRouter
 
 from vacancyx.api.routes.answers import router as answers_router
-from vacancyx.api.routes.applications import router as applications_router
 from vacancyx.api.routes.application_batches import router as application_batches_router
+from vacancyx.api.routes.applications import router as applications_router
 from vacancyx.api.routes.candidates import router as candidates_router
 from vacancyx.api.routes.jobs import router as jobs_router
 from vacancyx.api.routes.resume_parsing import router as resume_parsing_router
