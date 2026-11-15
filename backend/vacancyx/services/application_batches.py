@@ -256,7 +256,7 @@ class ApplicationBatchService:
         return {"batch": self.get(candidate_id, batch_id), "results": outcomes}
 
     @staticmethod
-    def _batch_query() -> Select[tuple[ApplicationBatch]]:
+    def _batch_query() -> Select[ApplicationBatch]:
         return select(ApplicationBatch).options(
             selectinload(ApplicationBatch.items)
             .selectinload(ApplicationBatchItem.application)
