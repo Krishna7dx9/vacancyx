@@ -98,7 +98,11 @@ class LeverPostingsAdapter:
             salary_min = self._optional_int(salary.get("min"))
             salary_max = self._optional_int(salary.get("max"))
             currency = salary.get("currency")
-            salary_currency = currency.upper() if isinstance(currency, str) and len(currency) == 3 else None
+            salary_currency = (
+                currency.upper()
+                if isinstance(currency, str) and len(currency) == 3
+                else None
+            )
             published_at = self._published_at(raw.get("createdAt"))
 
             listings.append(
