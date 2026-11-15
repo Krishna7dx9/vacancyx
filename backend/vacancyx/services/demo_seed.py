@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
@@ -10,6 +11,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from vacancyx.models import CandidateProfile, Job, JobObservation, SearchProfile
+
+SessionFactory = Callable[[], Session]
 
 
 @dataclass(frozen=True)
@@ -75,6 +78,13 @@ def seed_demo_workspace(session: Session) -> DemoSeedResult:
         )
         session.add(job)
         session.flush()
+    elif job.company_name != "Example Systems (Synthetic)" or not (
+        job.description and "not a real vacancy" in job.description
+    ):
+        raise ValueError(
+            "The reserved synthetic demo URL belongs to an unexpected job; "
+            "no existing job data was changed."
+        )
 
     observation = session.scalar(
         select(JobObservation).where(
@@ -91,9 +101,14 @@ def seed_demo_workspace(session: Session) -> DemoSeedResult:
                 source_url=job_url,
                 first_seen_at=now,
                 last_seen_at=now,
-                evidence={"synthetic": True, "note": "Local VacancyX demo fixture; not a real job."},
+                evidence={
+                    "synthetic": True,
+                    "note": "Local VacancyX demo fixture; not a real job.",
+                },
             )
         )
+    elif observation.job_id != job.id:
+        raise ValueError("The synthetic demo observation points to an unexpected job.")
 
     profile_name = "Demo backend roles in India"
     profile = session.scalar(
@@ -133,7 +148,7 @@ def seed_demo_workspace(session: Session) -> DemoSeedResult:
     )
 
 
-def run_demo_seed(session_factory: Any) -> DemoSeedResult:
+def run_demo_seed(session_factory: SessionFactory) -> DemoSeedResult:
     """Run the seed in one transaction using the application's session factory."""
     with session_factory() as session, session.begin():
         return seed_demo_workspace(session)
