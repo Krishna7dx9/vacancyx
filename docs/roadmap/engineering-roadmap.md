@@ -17,7 +17,7 @@ Sequential delivery: one active branch at a time. Complete, test, document, PR, 
 | 9b Durable worker | Complete | Database-backed task queue, atomic claims, fenced leases, heartbeats, bounded exponential retry/backoff, expired-lease recovery, cancellation, explicit handler registry and local worker CLI | Concurrent workers cannot double-claim; expired leases recover; stale workers cannot complete; retries are bounded; tasks are observable and restart-safe; no long work runs inside database transactions |
 | 9c Background task integrations | Planned | Queue discovery/source refresh through the worker, task status API/UI, local scheduling and operational controls | HTTP requests enqueue quickly; workers execute registered product handlers; progress and partial outcomes are visible; schedules do not duplicate tasks |
 | 10 Browser | Planned | Playwright, portal adapters, forms, confirmation, exceptions | Mock portal E2E success/failure/CAPTCHA/crash/uncertain; no duplicate retry |
-| 11 Tracking | Planned | Timeline, transitions, follow-ups, analytics, exports | Events consistent; exports complete |
+| 11 Tracking | In progress | Candidate-scoped lifecycle transitions, submission evidence, append-only assessment/interview/offer/follow-up timeline | Safe transitions enforced; submission requires confirmation evidence; event history is candidate-scoped and tested |
 | 12 Hardening | Planned | Threat verification, dependency checks, profiling, load tests, backup drills | Security tests; reproducible benchmark; limits documented |
 | 13 Release/demo | Planned | Release, install guide, synthetic demo, diagrams, API docs, benchmark | Clean setup; CI green; docs verified; no unsupported claims |
 
