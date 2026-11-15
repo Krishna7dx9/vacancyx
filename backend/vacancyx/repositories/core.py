@@ -369,7 +369,7 @@ class TaskRepository:
 
     def get(self, task_id: str) -> AutomationTask | None:
         """Fetch one task by its opaque identifier."""
-        return self._session.get(AutomationTask, task_id)
+        return self._session.get(AutomationTask, task_id, populate_existing=True)
 
     def list(
         self,
