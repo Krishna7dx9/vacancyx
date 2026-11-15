@@ -131,7 +131,10 @@ def test_duplicate_application_and_candidate_boundary(workspace) -> None:
     application_id = created.json()["id"]
     duplicate = client.post(f"/api/v1/candidates/{owner}/applications", json={"job_id": job_id})
     assert duplicate.status_code == 409
-    assert client.get(f"/api/v1/candidates/{other}/applications/{application_id}").status_code == 404
+    foreign_read = client.get(
+        f"/api/v1/candidates/{other}/applications/{application_id}"
+    )
+    assert foreign_read.status_code == 404
     assert client.get(f"/api/v1/candidates/{other}/applications").json()["total"] == 0
 
 
