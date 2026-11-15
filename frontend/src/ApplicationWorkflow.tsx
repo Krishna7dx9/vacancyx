@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 
+import ApplicationTrackingPanel from "./ApplicationTrackingPanel";
+
 import {
   apiRequest,
   uploadFile,
   type Application,
   type ApplicationBatch,
   type ApplicationBatchDecisionResponse,
+  type ApplicationStatusRead,
   type Candidate,
   type CandidateAnswer,
   type Job,
@@ -776,9 +779,26 @@ function ApplicationWorkflow({ candidate, jobs, onCandidateUpdated }: Props) {
               </div>
             ) : <div className="empty-state"><strong>No review batches yet.</strong><span>Select prepared applications above to create your first batch.</span></div>}
           </section>
+          <ApplicationTrackingPanel
+            candidateId={candidate.id}
+            applications={applications}
+            onApplicationUpdated={(updated: ApplicationStatusRead) =>
+              setApplications((current) =>
+                current.map((application) =>
+                  application.id === updated.id
+                    ? {
+                        ...application,
+                        status: updated.status,
+                        submitted_at: updated.submitted_at,
+                      }
+                    : application,
+                ),
+              )
+            }
+          />
         </div>
       </div>
-      <p className="workflow-disclaimer">External submission is intentionally unavailable at this stage. Review each snapshot carefully; editing creates a new revision and requires a fresh review.</p>
+      <p className="workflow-disclaimer">External portal automation is not enabled. Only record submission after you have confirmation evidence; editing content creates a new revision and requires a fresh review.</p>
     </section>
   );
 }
