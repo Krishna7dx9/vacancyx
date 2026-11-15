@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, Index, Integer, JSON, String
+from sqlalchemy import JSON, CheckConstraint, DateTime, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from vacancyx.db.base import Base, TimestampMixin
