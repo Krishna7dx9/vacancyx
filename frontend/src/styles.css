@@ -607,3 +607,46 @@ h1 span { color: #7ddbd0; }
 @media (max-width: 760px) {
   .discovery-source-list { grid-template-columns: 1fr; }
 }
+
+
+/* Recurring discovery schedule controls */
+.schedule-create-form,
+.schedule-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 13px;
+  border: 1px solid #30435b;
+  border-radius: 10px;
+  background: rgba(10, 21, 36, .52);
+}
+.schedule-create-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(150px, .8fr);
+  gap: 10px;
+}
+.schedule-item {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 11px;
+  border: 1px solid #30435b;
+  border-radius: 9px;
+  background: rgba(10, 21, 36, .68);
+}
+.schedule-item .workflow-item-heading > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.schedule-item .workflow-item-heading > div span {
+  color: #8296ae;
+  font-size: 9px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.schedule-actions { margin-top: 2px; }
+.text-button-danger { color: #f1a2a2; }
+@media (max-width: 560px) {
+  .schedule-create-fields { grid-template-columns: 1fr; }
+}
