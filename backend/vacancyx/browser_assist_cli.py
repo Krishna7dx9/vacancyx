@@ -3,18 +3,14 @@ from __future__ import annotations
 
 import argparse
 from typing import Sequence
+from urllib.parse import urlsplit
 
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from vacancyx.db.session import get_session_factory
-from vacancyx.models import (
-    Application,
-    ApplicationApproval,
-    ApplicationEvent,
-    ApplicationRevision,
-    Job,
-)
+from vacancyx.models import Application, ApplicationApproval, ApplicationEvent, Job
+from vacancyx.services.browser_assist import validate_portal_url
 from vacancyx.services.browser_runner import run_browser_assist
 
 
@@ -85,7 +81,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         url, title, snapshot, revision, content_hash = _load_approved_application(
             args.candidate_id, args.application_id
         )
-        host = __import__("urllib.parse", fromlist=["urlsplit"]).urlsplit(url).hostname
+        host = urlsplit(url).hostname
+        validate_portal_url(url, set(args.allowed_host))
         print(f"Application: {title}")
         print(f"Employer URL: {url}")
         print(f"Approved revision: {revision} ({content_hash[:12]}…)")
