@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import socket
 import threading
@@ -165,6 +166,13 @@ class TaskWorker:
                     "invalid_task_result",
                     "Task handlers must return a JSON-compatible object.",
                 )
+            try:
+                json.dumps(result, allow_nan=False)
+            except (TypeError, ValueError) as error:
+                raise PermanentTaskError(
+                    "invalid_task_result",
+                    "Task handlers must return JSON-compatible data.",
+                ) from error
         except PermanentTaskError as error:
             self._record_failure(
                 claim,
