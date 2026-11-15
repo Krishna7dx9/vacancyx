@@ -1,6 +1,7 @@
 """Candidate-owned search profile and match API contracts."""
 
 from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from vacancyx.api.schemas.jobs import JobRead
