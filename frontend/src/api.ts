@@ -168,7 +168,7 @@ export type Application = {
 };
 
 async function readError(response: Response): Promise<string> {
-  let message = \`Request failed (\${response.status})\`;
+  let message = `Request failed (${response.status})`;
   try {
     const payload: { detail?: unknown } = await response.json();
     if (typeof payload.detail === "string") {
@@ -188,7 +188,7 @@ export async function apiRequest<T>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
-  const response = await fetch(\`/api/v1\${path}\`, {
+  const response = await fetch(`/api/v1${path}`, {
     ...options,
     headers: {
       "Content-Type": "application/json",
@@ -204,7 +204,7 @@ export async function apiRequest<T>(
 export async function uploadFile<T>(path: string, file: File): Promise<T> {
   const body = new FormData();
   body.append("file", file);
-  const response = await fetch(\`/api/v1\${path}\`, { method: "POST", body });
+  const response = await fetch(`/api/v1${path}`, { method: "POST", body });
   if (!response.ok) throw new Error(await readError(response));
   return (await response.json()) as T;
 }
