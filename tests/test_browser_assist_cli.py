@@ -4,7 +4,7 @@ from collections.abc import Iterator
 from datetime import UTC, datetime
 
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -80,9 +80,11 @@ def test_cli_loads_exact_current_approved_revision(approved_application) -> None
     url, title, snapshot, revision, content_hash = _load_approved_application(
         candidate_id, application_id
     )
+    candidate_snapshot = snapshot.get("candidate")
+    assert isinstance(candidate_snapshot, dict)
     assert url == "https://jobs.example.test/apply/123"
     assert title == "Example Systems — Backend Engineer"
-    assert snapshot["candidate"]["display_name"] == "Synthetic Candidate"
+    assert candidate_snapshot["display_name"] == "Synthetic Candidate"
     assert revision == 1
     assert content_hash == "a" * 64
 
@@ -101,7 +103,7 @@ def test_cli_refuses_approval_with_stale_content_hash(approved_application) -> N
     candidate_id, application_id, factory = approved_application
     with factory() as session, session.begin():
         approval = session.scalar(
-            __import__("sqlalchemy").select(ApplicationApproval).where(
+            select(ApplicationApproval).where(
                 ApplicationApproval.application_id == application_id
             )
         )
