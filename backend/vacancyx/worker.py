@@ -294,8 +294,8 @@ def main() -> None:
     parser.add_argument(
         "--poll-interval",
         type=float,
-        default=2.0,
-        help="Seconds to wait when the queue is empty.",
+        default=None,
+        help="Seconds to wait when the queue is empty (defaults to VACANCYX_WORKER_POLL_INTERVAL_SECONDS).",
     )
     args = parser.parse_args()
     logging.basicConfig(
@@ -314,7 +314,7 @@ def main() -> None:
         worker.run_once()
         return
     try:
-        worker.run_forever(poll_interval_seconds=args.poll_interval or settings.worker_poll_interval_seconds)
+        worker.run_forever(poll_interval_seconds=args.poll_interval if args.poll_interval is not None else settings.worker_poll_interval_seconds)
     except KeyboardInterrupt:
         logger.info("Worker shutdown requested")
 
