@@ -68,7 +68,10 @@ def canonicalize_job_url(url: str) -> str:
     if port not in (None, 443):
         raise SourcePolicyError("Non-default listing URL ports are not allowed.")
 
-    host = hostname.encode("idna").decode("ascii").lower().rstrip(".")
+    try:
+        host = hostname.encode("idna").decode("ascii").lower().rstrip(".")
+    except UnicodeError as exc:
+        raise SourcePolicyError("Listing URL hostname is invalid.") from exc
     try:
         ip_address(host)
     except ValueError:
@@ -105,11 +108,15 @@ class JobDiscoveryService:
         self._clock = clock or (lambda: datetime.now(UTC))
         self._jobs = JobRepository(session)
         self._observations = JobObservationRepository(session)
+        self._gates: dict[str, SourceExecutionGate] = {}
 
     async def discover_source(self, source_key: str) -> DiscoverySummary:
         """Fetch at most the configured page count and preserve already committed pages."""
         adapter, config = self._registry.get(source_key)
-        gate = SourceExecutionGate(config)
+        gate = self._gates.get(source_key)
+        if gate is None:
+            gate = SourceExecutionGate(config)
+            self._gates[source_key] = gate
         cursor: str | None = None
         requested_cursors: set[str | None] = set()
         pages_fetched = 0
