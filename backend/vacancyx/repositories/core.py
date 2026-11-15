@@ -104,7 +104,7 @@ class TaskRepository:
                 self._session.add(task)
                 self._session.flush()
             return task
-        except IntegrityError:
+        except IntegrityError as error:
             existing = self._session.scalar(
                 select(AutomationTask).where(AutomationTask.idempotency_key == normalized_key)
             )
