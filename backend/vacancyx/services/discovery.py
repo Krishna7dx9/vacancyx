@@ -267,8 +267,11 @@ class JobDiscoveryService:
             value = getattr(listing, field)
             if value is not None:
                 setattr(job, field, value)
+        existing_published_at = job.first_published_at
+        if existing_published_at is not None and existing_published_at.utcoffset() is None:
+            existing_published_at = existing_published_at.replace(tzinfo=UTC)
         if listing.published_at is not None and (
-            job.first_published_at is None or listing.published_at < job.first_published_at
+            existing_published_at is None or listing.published_at < existing_published_at
         ):
             job.first_published_at = listing.published_at
         job.last_verified_at = now
