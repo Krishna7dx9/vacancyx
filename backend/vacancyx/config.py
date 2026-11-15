@@ -42,7 +42,7 @@ class Settings(BaseSettings):
     lever_sites: list[LeverSiteSetting] = Field(default_factory=list)
 
     @model_validator(mode="after")
-    def validate_worker_retry_bounds(self) -> Self:
+    def validate_runtime_bounds(self) -> Self:
         if self.worker_retry_max_delay_seconds < self.worker_retry_base_delay_seconds:
             raise ValueError("worker retry maximum delay must be at least the base delay.")
         source_keys = [
