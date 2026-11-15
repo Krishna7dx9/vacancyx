@@ -435,8 +435,27 @@ function ApplicationWorkflow({ candidate, jobs, onCandidateUpdated }: Props) {
       setApplications((current) =>
         current.map((item) => item.id === updated.id ? updated : item),
       );
+      setSelectedBatchItems((current) =>
+        Object.fromEntries(
+          Object.entries(current).map(([batchId, ids]) => [
+            batchId,
+            ids.filter((id) => id !== updated.id),
+          ]),
+        ),
+      );
+      let batchRefreshWarning = "";
+      try {
+        const refreshedBatches = await apiRequest<ApplicationBatch[]>(
+          candidatePath(candidate.id, "/application-batches"),
+        );
+        setBatches(refreshedBatches);
+      } catch {
+        batchRefreshWarning = " Batch status will refresh when you reload this workspace.";
+      }
       setEditingApplicationId("");
-      setNotice(`Draft revised to content revision ${updated.current_revision}. Any prior review must be repeated.`);
+      setNotice(
+        `Draft revised to content revision ${updated.current_revision}. Any prior review must be repeated.${batchRefreshWarning}`,
+      );
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not revise application.");
     } finally {
@@ -606,7 +625,26 @@ function ApplicationWorkflow({ candidate, jobs, onCandidateUpdated }: Props) {
                         <div><strong>{String(snapshot?.job.title ?? "Application draft")}</strong><span>{String(snapshot?.job.company_name ?? "Company unknown")}</span></div>
                         <span className="status-pill">{application.status}</span>
                       </div>
-                      {application.status === "prepared" && <label className="check-row batch-select-row"><input type="checkbox" checked={selectedForBatch.includes(application.id)} onChange={() => toggleApplicationForBatch(application.id)} /><span>Add this draft to a review batch</span></label>}
+                      {application.status === "prepared" && (() => {
+                        const inActiveBatch = batches.some((batch) =>
+                          batch.status === "reviewing" && batch.items.some((item) =>
+                            item.application_id === application.id &&
+                            item.decision === "pending" &&
+                            !item.is_stale,
+                          ),
+                        );
+                        return (
+                          <label className="check-row batch-select-row">
+                            <input
+                              type="checkbox"
+                              checked={selectedForBatch.includes(application.id)}
+                              disabled={inActiveBatch}
+                              onChange={() => toggleApplicationForBatch(application.id)}
+                            />
+                            <span>{inActiveBatch ? "Already in an active review batch" : "Add this draft to a review batch"}</span>
+                          </label>
+                        );
+                      })()}
                       <div className="application-metadata">
                         <span>Revision {application.current_revision}</span>
                         <span>{snapshot?.answers.length ?? 0} answers</span>
@@ -673,6 +711,56 @@ function ApplicationWorkflow({ candidate, jobs, onCandidateUpdated }: Props) {
                               {item.is_stale && <span className="workflow-warning">Stale revision</span>}
                             </div>
                             {item.missing_fields.length > 0 && <p className="workflow-warning">Missing: {item.missing_fields.join(", ")}</p>}
+                            {item.content_snapshot && (
+                              <details className="batch-snapshot">
+                                <summary>Inspect exact content reviewed · revision {item.revision}</summary>
+                                <div className="batch-snapshot-content">
+                                  <div className="snapshot-group">
+                                    <strong>Candidate</strong>
+                                    <span>{String(item.content_snapshot.candidate.display_name ?? "Name missing")}</span>
+                                    <span>{String(item.content_snapshot.candidate.email ?? "Email missing")} · {String(item.content_snapshot.candidate.phone ?? "Phone missing")}</span>
+                                    <span>{String(item.content_snapshot.candidate.location ?? "Location not provided")}</span>
+                                    <span>Skills: {Array.isArray(item.content_snapshot.candidate.skills) ? item.content_snapshot.candidate.skills.join(", ") : "Not provided"}</span>
+                                  </div>
+                                  <div className="snapshot-group">
+                                    <strong>Job</strong>
+                                    <span>{String(item.content_snapshot.job.title ?? item.job_title)} · {String(item.content_snapshot.job.company_name ?? item.company_name)}</span>
+                                    <span>{String(item.content_snapshot.job.location ?? "Location unknown")} · {String(item.content_snapshot.job.work_mode ?? "Work mode unknown")}</span>
+                                    {typeof item.content_snapshot.job.canonical_url === "string" && <a className="job-link" href={item.content_snapshot.job.canonical_url} target="_blank" rel="noreferrer">Open original listing ↗</a>}
+                                    {typeof item.content_snapshot.job.description === "string" && (
+                                      <details className="snapshot-description">
+                                        <summary>Job description</summary>
+                                        <p>{item.content_snapshot.job.description}</p>
+                                      </details>
+                                    )}
+                                  </div>
+                                  <div className="snapshot-group">
+                                    <strong>Resume</strong>
+                                    <span>{item.content_snapshot.resume?.filename ?? "No resume selected"}</span>
+                                    {item.content_snapshot.resume && <span>Parse status: {item.content_snapshot.resume.parse_status}</span>}
+                                  </div>
+                                  <div className="snapshot-group">
+                                    <strong>Reusable answers ({item.content_snapshot.answers.length})</strong>
+                                    {item.content_snapshot.answers.length ? item.content_snapshot.answers.map((answer) => (
+                                      <div className="snapshot-answer" key={answer.id}>
+                                        <b>{answer.question}</b>
+                                        <p>{answer.answer}</p>
+                                        <span>Answer revision {answer.revision} · SHA-256 {answer.content_hash}</span>
+                                      </div>
+                                    )) : <span>No reusable answers selected.</span>}
+                                  </div>
+                                  {Object.entries(item.content_snapshot.custom_fields).length > 0 && (
+                                    <div className="snapshot-group">
+                                      <strong>Additional fields</strong>
+                                      {Object.entries(item.content_snapshot.custom_fields).map(([key, value]) => (
+                                        <span key={key}>{key}: {value}</span>
+                                      ))}
+                                    </div>
+                                  )}
+                                  <p className="hash-line">Snapshot SHA-256 · {item.content_hash}</p>
+                                </div>
+                              </details>
+                            )}
                             <p className="hash-line">SHA-256 · {item.content_hash}</p>
                           </div>
                         ))}
