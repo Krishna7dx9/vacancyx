@@ -153,6 +153,9 @@ class JobDiscoveryService:
             except TimeoutError:
                 errors.append("source_timeout")
                 break
+            except SourcePolicyError:
+                errors.append("unsafe_source_url")
+                break
             except Exception:
                 errors.append("source_request_failed")
                 break
