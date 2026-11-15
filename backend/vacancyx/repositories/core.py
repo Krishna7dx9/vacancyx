@@ -313,7 +313,7 @@ class TaskRepository:
     ) -> int:
         """Requeue expired work or fail exhausted tasks, fenced by the expired lease."""
         if limit < 1 or base_delay_seconds < 0 or max_delay_seconds < 0:
-            raise ValueError("Recovery limits and retry delays must be non-negative.")
+            raise ValueError("Recovery limit must be positive and retry delays non-negative.")
         current_time = now or datetime.now(UTC)
         expired = list(
             self._session.execute(
@@ -350,7 +350,7 @@ class TaskRepository:
                     AutomationTask.lease_expires_at <= current_time,
                 )
                 .execution_options(synchronize_session=False)
-            .values(
+                .values(
                     state=next_state,
                     available_at=available_at,
                     lease_owner=None,
