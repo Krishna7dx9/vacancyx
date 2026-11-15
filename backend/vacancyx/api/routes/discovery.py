@@ -75,11 +75,15 @@ def enqueue_discovery(
     try:
         with session.begin():
             repository = TaskRepository(session)
-            for source_key in payload.source_keys:
+            request_source_keys = sorted(payload.source_keys)
+            for source_key in request_source_keys:
                 tasks.append(
                     repository.enqueue(
                         task_type="jobs.discover_source",
-                        payload={"source_key": source_key},
+                        payload={
+                            "source_key": source_key,
+                            "request_source_keys": request_source_keys,
+                        },
                         idempotency_key=payload.idempotency_key + ":" + source_key,
                         max_attempts=3,
                     )
