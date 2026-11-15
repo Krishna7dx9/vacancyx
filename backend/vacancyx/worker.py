@@ -140,6 +140,15 @@ class TaskWorker:
         if claim is None:
             return False
 
+        logger.info(
+            "Claimed task",
+            extra={
+                "task_id": claim.id,
+                "task_type": claim.task_type,
+                "attempt": claim.attempts,
+                "worker_id": self.worker_id,
+            },
+        )
         handler = self._handlers.get(claim.task_type)
         if handler is None:
             self._record_failure(
@@ -188,9 +197,9 @@ class TaskWorker:
                 retryable=True,
             )
         except Exception as error:
-            logger.exception(
+            logger.error(
                 "Task handler raised an unexpected exception",
-                extra={"task_id": claim.id},
+                extra={"task_id": claim.id, "error_type": type(error).__name__},
             )
             self._record_failure(
                 claim,
@@ -208,6 +217,11 @@ class TaskWorker:
             if not completed:
                 logger.warning(
                     "Task result discarded because the worker no longer owns a live lease",
+                    extra={"task_id": claim.id, "worker_id": self.worker_id},
+                )
+            else:
+                logger.info(
+                    "Task completed",
                     extra={"task_id": claim.id, "worker_id": self.worker_id},
                 )
         return True
@@ -260,6 +274,17 @@ class TaskWorker:
             logger.warning(
                 "Task failure discarded because the worker no longer owns a live lease",
                 extra={"task_id": claim.id, "worker_id": self.worker_id},
+            )
+        else:
+            logger.warning(
+                "Task attempt failed",
+                extra={
+                    "task_id": claim.id,
+                    "worker_id": self.worker_id,
+                    "error_code": error_code,
+                    "retryable": retryable,
+                    "needs_attention": needs_attention,
+                },
             )
 
     @staticmethod
