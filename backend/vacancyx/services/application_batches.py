@@ -73,19 +73,64 @@ class ApplicationBatchService:
             raise BatchInputError("A batch cannot contain more than 100 applications.")
         if len(application_ids) != len(set(application_ids)):
             raise BatchInputError("An application can appear only once in a batch.")
-        active_item = self.session.scalar(
-            select(ApplicationBatchItem.id)
-            .join(ApplicationBatch, ApplicationBatch.id == ApplicationBatchItem.batch_id)
-            .where(
-                ApplicationBatchItem.application_id.in_(application_ids),
-                ApplicationBatchItem.decision == "pending",
-                ApplicationBatch.status == "reviewing",
-            )
+        active_items = list(
+            self.session.scalars(
+                select(ApplicationBatchItem)
+                .join(ApplicationBatch, ApplicationBatch.id == ApplicationBatchItem.batch_id)
+                .where(
+                    ApplicationBatchItem.application_id.in_(application_ids),
+                    ApplicationBatchItem.decision == "pending",
+                    ApplicationBatch.status == "reviewing",
+                )
+                .options(
+                    selectinload(ApplicationBatchItem.application).selectinload(
+                        Application.revisions
+                    )
+                )
+            ).all()
         )
-        if active_item is not None:
-            raise BatchConflictError(
-                "An application already belongs to an active review batch."
-            )
+        stale_items: list[ApplicationBatchItem] = []
+        for item in active_items:
+            current = self._current_revision(item.application)
+            if (
+                current is None
+                or current.revision != item.revision
+                or current.content_hash != item.content_hash
+            ):
+                stale_items.append(item)
+            else:
+                raise BatchConflictError(
+                    "An application already belongs to an active review batch."
+                )
+        if stale_items:
+            now = datetime.now(UTC)
+            affected_batch_ids = {item.batch_id for item in stale_items}
+            for item in stale_items:
+                item.decision = "stale"
+                item.decided_at = now
+                self._add_event(
+                    item.application,
+                    "batch_item_stale",
+                    {
+                        "batch_id": item.batch_id,
+                        "batch_revision": item.revision,
+                        "current_revision": item.application.current_revision,
+                    },
+                )
+            for affected_batch_id in affected_batch_ids:
+                remaining = self.session.scalar(
+                    select(ApplicationBatchItem.id).where(
+                        ApplicationBatchItem.batch_id == affected_batch_id,
+                        ApplicationBatchItem.decision == "pending",
+                        ApplicationBatchItem.id.not_in(
+                            [item.id for item in stale_items if item.batch_id == affected_batch_id]
+                        ),
+                    )
+                )
+                if remaining is None:
+                    affected_batch = self.session.get(ApplicationBatch, affected_batch_id)
+                    if affected_batch is not None:
+                        affected_batch.status = "completed"
 
         applications = list(
             self.session.scalars(
