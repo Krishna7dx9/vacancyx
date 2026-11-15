@@ -372,6 +372,7 @@ def _discovery_handler(
         permanent_codes = {
             "unsafe_listing_url",
             "unsafe_source_url",
+            "invalid_source_response",
             "pagination_cycle",
             "source_page_limit_exceeded",
         }
