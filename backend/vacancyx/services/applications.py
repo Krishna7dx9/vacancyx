@@ -150,6 +150,9 @@ class ApplicationService:
         if custom_fields is not None:
             snapshot["custom_fields"] = custom_fields
         snapshot["resume"] = self._resume_snapshot(resume)
+        snapshot["readiness"] = self._readiness_from_snapshot(
+            snapshot["candidate"], resume, snapshot["answers"]
+        )
         next_revision = application.current_revision + 1
         with self.session.begin_nested():
             application.resume_id = resume.id if resume else None
@@ -277,6 +280,27 @@ class ApplicationService:
         if resume is None:
             missing.append("resume")
         if resume is not None and resume.parse_status not in {"parsed", "reviewed"}:
+            missing.append("resume.review")
+        return {
+            "status": "ready_for_review" if not missing else "needs_attention",
+            "missing_fields": missing,
+            "selected_answer_count": len(answers),
+        }
+
+    @staticmethod
+    def _readiness_from_snapshot(
+        candidate: dict[str, Any],
+        resume: Resume | None,
+        answers: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        missing = []
+        if not candidate.get("email"):
+            missing.append("candidate.email")
+        if not candidate.get("phone"):
+            missing.append("candidate.phone")
+        if resume is None:
+            missing.append("resume")
+        elif resume.parse_status not in {"parsed", "reviewed"}:
             missing.append("resume.review")
         return {
             "status": "ready_for_review" if not missing else "needs_attention",
