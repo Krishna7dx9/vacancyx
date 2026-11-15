@@ -350,3 +350,18 @@ def test_batch_decision_cannot_be_replayed(workspace) -> None:
         json=payload,
     )
     assert replay.status_code == 409
+
+
+def test_application_cannot_enter_two_active_review_batches(workspace) -> None:
+    client, factory = workspace
+    candidate_id = _candidate(client)
+    application_id = _application(
+        client, factory, candidate_id, suffix="active-batch"
+    )
+    first = _create_batch(client, candidate_id, [application_id])
+    second = client.post(
+        f"/api/v1/candidates/{candidate_id}/application-batches",
+        json={"name": "Second review", "application_ids": [application_id]},
+    )
+    assert first["status"] == "reviewing"
+    assert second.status_code == 409
