@@ -619,32 +619,30 @@ function ApplicationWorkflow({ candidate, jobs, onCandidateUpdated }: Props) {
                   const snapshot = application.latest_revision?.content_snapshot;
                   const readiness = snapshot?.readiness;
                   const editing = editingApplicationId === application.id;
+                  const inActiveBatch = batches.some((batch) =>
+                    batch.status === "reviewing" && batch.items.some((item) =>
+                      item.application_id === application.id &&
+                      item.decision === "pending" &&
+                      !item.is_stale,
+                    ),
+                  );
                   return (
                     <article className="workflow-item application-item" key={application.id}>
                       <div className="workflow-item-heading">
                         <div><strong>{String(snapshot?.job.title ?? "Application draft")}</strong><span>{String(snapshot?.job.company_name ?? "Company unknown")}</span></div>
                         <span className="status-pill">{application.status}</span>
                       </div>
-                      {application.status === "prepared" && (() => {
-                        const inActiveBatch = batches.some((batch) =>
-                          batch.status === "reviewing" && batch.items.some((item) =>
-                            item.application_id === application.id &&
-                            item.decision === "pending" &&
-                            !item.is_stale,
-                          ),
-                        );
-                        return (
-                          <label className="check-row batch-select-row">
-                            <input
-                              type="checkbox"
-                              checked={selectedForBatch.includes(application.id)}
-                              disabled={inActiveBatch}
-                              onChange={() => toggleApplicationForBatch(application.id)}
-                            />
-                            <span>{inActiveBatch ? "Already in an active review batch" : "Add this draft to a review batch"}</span>
-                          </label>
-                        );
-                      })()}
+                      {application.status === "prepared" && (
+                        <label className="check-row batch-select-row">
+                          <input
+                            type="checkbox"
+                            checked={selectedForBatch.includes(application.id)}
+                            disabled={inActiveBatch}
+                            onChange={() => toggleApplicationForBatch(application.id)}
+                          />
+                          <span>{inActiveBatch ? "Already in an active review batch" : "Add this draft to a review batch"}</span>
+                        </label>
+                      )}
                       <div className="application-metadata">
                         <span>Revision {application.current_revision}</span>
                         <span>{snapshot?.answers.length ?? 0} answers</span>
@@ -777,7 +775,6 @@ function ApplicationWorkflow({ candidate, jobs, onCandidateUpdated }: Props) {
                 })}
               </div>
             ) : <div className="empty-state"><strong>No review batches yet.</strong><span>Select prepared applications above to create your first batch.</span></div>}
-          </section>
           </section>
         </div>
       </div>
