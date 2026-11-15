@@ -306,7 +306,7 @@ class ApplicationService:
             missing.append("candidate.phone")
         if resume is None:
             missing.append("resume")
-        elif resume.parse_status not in {"parsed", "reviewed"}:
+        elif resume.parse_status != "reviewed":
             missing.append("resume.review")
         return {
             "status": "ready_for_review" if not missing else "needs_attention",
