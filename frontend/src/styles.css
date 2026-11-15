@@ -542,3 +542,68 @@ h1 span { color: #7ddbd0; }
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+
+/* Local background job discovery queue */
+.discovery-panel { margin-top: 16px; }
+.discovery-source-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 13px 0;
+}
+.discovery-source-row {
+  min-width: 0;
+  padding: 10px 11px;
+  border: 1px solid #30435b;
+  border-radius: 9px;
+  background: rgba(12, 24, 40, .68);
+}
+.discovery-source-row > span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.discovery-source-row strong {
+  color: #e4edf7;
+  font-size: 10px;
+}
+.discovery-source-row small {
+  color: #8296ae;
+  font-size: 9px;
+  overflow-wrap: anywhere;
+}
+.discovery-empty { margin: 12px 0; }
+.discovery-actions { margin: 13px 0 16px; }
+.worker-command {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin: 12px 0 16px;
+  padding: 10px 12px;
+  border: 1px dashed #3b566e;
+  border-radius: 9px;
+  background: rgba(9, 18, 31, .62);
+}
+.worker-command span { color: #9aacc0; font-size: 10px; }
+.worker-command code {
+  padding: 4px 7px;
+  border-radius: 5px;
+  color: #8ce1d6;
+  background: #0c1728;
+  font-size: 10px;
+}
+.discovery-task-list { display: grid; gap: 9px; }
+.discovery-task-list > .workflow-section-heading { margin-bottom: 2px; }
+.discovery-task-item {
+  display: grid;
+  gap: 8px;
+  padding: 11px;
+  border: 1px solid #30435b;
+  border-radius: 9px;
+  background: rgba(10, 21, 36, .68);
+}
+@media (max-width: 760px) {
+  .discovery-source-list { grid-template-columns: 1fr; }
+}
