@@ -340,7 +340,7 @@ def _discovery_handler(
             raise PermanentTaskError("invalid_source_key", "A source key is required.")
         try:
             source_registry.get(source_key)
-        except KeyError as error:
+        except (KeyError, ValueError) as error:
             raise PermanentTaskError(
                 "unknown_source",
                 "The requested public source is not configured.",
@@ -358,22 +358,34 @@ def _discovery_handler(
             "status": summary.status,
             "pages_fetched": summary.pages_fetched,
             "listings_seen": summary.listings_seen,
-            "listings_ingested": summary.listings_ingested,
+            "jobs_created": summary.jobs_created,
+            "observations_created": summary.observations_created,
+            "observations_updated": summary.observations_updated,
             "truncated": summary.truncated,
             "error_codes": summary.error_codes,
         }
         transient_codes = {"source_timeout", "source_request_failed", "persistence_failed"}
+        permanent_codes = {
+            "unsafe_listing_url",
+            "pagination_cycle",
+            "source_page_limit_exceeded",
+        }
         if any(code in transient_codes for code in summary.error_codes):
             raise RetryableTaskError(
                 "source_discovery_failed",
                 "The public source could not be refreshed; the task will retry.",
             )
-        if summary.status == "failed":
+        if any(code in permanent_codes for code in summary.error_codes):
+            raise PermanentTaskError(
+                "source_discovery_rejected",
+                "The source returned unsafe or invalid data and was stopped.",
+            )
+        if summary.status == "failed" or summary.error_codes:
             raise PermanentTaskError(
                 "source_discovery_rejected",
                 "The source returned invalid data or violated source policy.",
             )
-        if summary.truncated or summary.status == "partial":
+        if summary.truncated:
             return TaskOutcome(result=result, state="partially_succeeded")
         return result
 
