@@ -2,7 +2,7 @@
 
 Local-first job discovery and application workflow platform.
 
-> Status: implementation in progress. Backend foundations, SQLite persistence and recovery, candidate profile APIs, secure local resume storage, resume parsing/review, reusable answer library, job-source ingestion, explainable matching, job search APIs, a local React workspace, and immutable application preparation are implemented incrementally. Batch review and revision-bound approval APIs are now in progress; durable execution, browser automation, outcome tracking, and production hardening remain unfinished.
+> Status: implementation in progress. Backend foundations, SQLite persistence and recovery, candidate profile APIs, secure local resume storage, resume parsing/review, reusable answer library, job-source ingestion, explainable matching, job search APIs, the local React workspace, immutable application preparation, and revision-bound batch review are implemented. The local durable worker runtime is implemented with fenced leases, retries, recovery, and a diagnostic handler; source-specific background handlers, browser automation, outcome tracking, and production hardening remain unfinished.
 
 VacancyX is a configurable product for candidate profiles, resume management, job discovery, explainable matching, application preparation, batch review, supported browser automation, and outcome tracking.
 
@@ -19,6 +19,6 @@ Modular monolith with separately runnable workers; SQLite initially; future Post
 ## Cost and access
 Core runs locally. Public sites may restrict access, change interfaces, require login, or rate-limit. Respect terms and controls; never bypass CAPTCHA/MFA. Scheduled work runs only while the computer is available.
 
-See [engineering docs](docs/README.md) and [roadmap](docs/roadmap/engineering-roadmap.md). One branch at a time: test, PR, merge, verify main, then create the next. The current local workspace supports candidate setup, configurable search criteria, job search, and explainable matching. Application preparation is available through the backend API; its candidate-facing review experience, batch approval, browser automation, outcome tracking, and the complete end-to-end workflow remain unfinished.
+See [engineering docs](docs/README.md) and [roadmap](docs/roadmap/engineering-roadmap.md). One branch at a time: test, PR, merge, verify main, then create the next. The local workspace supports candidate setup, configurable search criteria, job search, explainable matching, resume review, reusable answers, application preparation, and revision-bound batch approval. A local worker process can execute registered durable task handlers; the built-in `system.echo` handler is diagnostic only. Discovery handlers, Playwright portal automation, outcome tracking, and the complete end-to-end workflow remain unfinished. Start the worker with `vacancyx-worker` after applying migrations; see the [local worker guide](docs/operations/local-worker.md).
 
 MIT License.

@@ -5,6 +5,7 @@ from typing import Any
 from uuid import uuid4
 
 from sqlalchemy import select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from vacancyx.models import AutomationTask, CandidateProfile, Job, Resume
@@ -68,33 +69,83 @@ class TaskRepository:
         available_at: datetime | None = None,
         max_attempts: int = 5,
     ) -> AutomationTask:
+        normalized_type = task_type.strip()
+        normalized_key = idempotency_key.strip()
+        if not normalized_type or len(normalized_type) > 100:
+            raise ValueError("task_type must contain 1 to 100 characters.")
+        if not normalized_key or len(normalized_key) > 255:
+            raise ValueError("idempotency_key must contain 1 to 255 characters.")
+        if not 1 <= max_attempts <= 20:
+            raise ValueError("max_attempts must be between 1 and 20.")
+
         existing = self._session.scalar(
-            select(AutomationTask).where(AutomationTask.idempotency_key == idempotency_key)
+            select(AutomationTask).where(AutomationTask.idempotency_key == normalized_key)
         )
         if existing is not None:
+            if (
+                existing.task_type != normalized_type
+                or existing.payload != payload
+                or existing.max_attempts != max_attempts
+            ):
+                raise ValueError(
+                    "idempotency_key is already used for a different task request."
+                )
             return existing
+
         task = AutomationTask(
-            task_type=task_type,
+            task_type=normalized_type,
             payload=payload,
-            idempotency_key=idempotency_key,
+            idempotency_key=normalized_key,
             available_at=available_at or datetime.now(UTC),
             max_attempts=max_attempts,
         )
-        self._session.add(task)
-        self._session.flush()
-        return task
+        try:
+            with self._session.begin_nested():
+                self._session.add(task)
+                self._session.flush()
+            return task
+        except IntegrityError:
+            existing = self._session.scalar(
+                select(AutomationTask).where(AutomationTask.idempotency_key == normalized_key)
+            )
+            if existing is None:
+                raise
+            if (
+                existing.task_type != normalized_type
+                or existing.payload != payload
+                or existing.max_attempts != max_attempts
+            ):
+                raise ValueError(
+                    "idempotency_key is already used for a different task request."
+                ) from None
+            return existing
 
-    def claim_next(self, *, worker_id: str, lease_seconds: int = 60) -> AutomationTask | None:
+    def claim_next(
+        self,
+        *,
+        worker_id: str,
+        lease_seconds: int = 60,
+        now: datetime | None = None,
+    ) -> AutomationTask | None:
         """Atomically claim one available task using a conditional update."""
-        now = datetime.now(UTC)
+        if not worker_id.strip() or len(worker_id) > 120:
+            raise ValueError("worker_id must contain 1 to 120 characters.")
+        if lease_seconds < 1:
+            raise ValueError("lease_seconds must be positive.")
+        worker_id = worker_id.strip()
+        claimed_at = now or datetime.now(UTC)
         candidate_id = self._session.scalar(
             select(AutomationTask.id)
             .where(
                 AutomationTask.state.in_(("queued", "retry_wait")),
-                AutomationTask.available_at <= now,
+                AutomationTask.available_at <= claimed_at,
                 AutomationTask.attempts < AutomationTask.max_attempts,
             )
-            .order_by(AutomationTask.available_at, AutomationTask.created_at, AutomationTask.id)
+            .order_by(
+                AutomationTask.available_at,
+                AutomationTask.created_at,
+                AutomationTask.id,
+            )
             .limit(1)
         )
         if candidate_id is None:
@@ -105,22 +156,238 @@ class TaskRepository:
             .where(
                 AutomationTask.id == candidate_id,
                 AutomationTask.state.in_(("queued", "retry_wait")),
-                AutomationTask.available_at <= now,
+                AutomationTask.available_at <= claimed_at,
+                AutomationTask.attempts < AutomationTask.max_attempts,
             )
+            .execution_options(synchronize_session=False)
             .values(
                 state="running",
                 lease_owner=worker_id,
                 lease_token=token,
-                lease_expires_at=now + timedelta(seconds=lease_seconds),
+                lease_expires_at=claimed_at + timedelta(seconds=lease_seconds),
                 attempts=AutomationTask.attempts + 1,
-                updated_at=now,
+                updated_at=claimed_at,
             )
             .returning(AutomationTask.id)
         )
         if claimed_id is None:
             return None
         self._session.flush()
-        return self._session.get(AutomationTask, claimed_id)
+        return self._session.get(AutomationTask, claimed_id, populate_existing=True)
+
+    def heartbeat(
+        self,
+        *,
+        task_id: str,
+        lease_token: str,
+        lease_seconds: int = 60,
+        now: datetime | None = None,
+    ) -> bool:
+        """Extend a live lease only when the caller still owns its fencing token."""
+        if lease_seconds < 1:
+            raise ValueError("lease_seconds must be positive.")
+        current_time = now or datetime.now(UTC)
+        renewed_id = self._session.scalar(
+            update(AutomationTask)
+            .where(
+                AutomationTask.id == task_id,
+                AutomationTask.state == "running",
+                AutomationTask.lease_token == lease_token,
+                AutomationTask.lease_expires_at > current_time,
+            )
+            .execution_options(synchronize_session=False)
+            .values(
+                lease_expires_at=current_time + timedelta(seconds=lease_seconds),
+                updated_at=current_time,
+            )
+            .returning(AutomationTask.id)
+        )
+        return renewed_id is not None
+
+    def complete(
+        self,
+        *,
+        task_id: str,
+        lease_token: str,
+        result: dict[str, Any],
+        state: str = "succeeded",
+        now: datetime | None = None,
+    ) -> bool:
+        """Finish a task only while its lease is live and still owned by this worker."""
+        if state not in {"succeeded", "partially_succeeded"}:
+            raise ValueError("A completed task must be succeeded or partially_succeeded.")
+        current_time = now or datetime.now(UTC)
+        completed_id = self._session.scalar(
+            update(AutomationTask)
+            .where(
+                AutomationTask.id == task_id,
+                AutomationTask.state == "running",
+                AutomationTask.lease_token == lease_token,
+                AutomationTask.lease_expires_at > current_time,
+            )
+            .execution_options(synchronize_session=False)
+            .values(
+                state=state,
+                result=result,
+                lease_owner=None,
+                lease_token=None,
+                lease_expires_at=None,
+                last_error_code=None,
+                last_error_message=None,
+                updated_at=current_time,
+            )
+            .returning(AutomationTask.id)
+        )
+        return completed_id is not None
+
+    def fail(
+        self,
+        *,
+        task_id: str,
+        lease_token: str,
+        error_code: str,
+        error_message: str,
+        retryable: bool = True,
+        needs_attention: bool = False,
+        base_delay_seconds: int = 5,
+        max_delay_seconds: int = 300,
+        now: datetime | None = None,
+    ) -> bool:
+        """Record a failure, applying bounded exponential backoff when retryable."""
+        if base_delay_seconds < 0 or max_delay_seconds < 0:
+            raise ValueError("Retry delays cannot be negative.")
+        current_time = now or datetime.now(UTC)
+        task = self._session.scalar(
+            select(AutomationTask).where(
+                AutomationTask.id == task_id,
+                AutomationTask.state == "running",
+                AutomationTask.lease_token == lease_token,
+                AutomationTask.lease_expires_at > current_time,
+            )
+        )
+        if task is None:
+            return False
+
+        if needs_attention:
+            next_state = "needs_attention"
+            available_at = current_time
+        elif retryable and task.attempts < task.max_attempts:
+            next_state = "retry_wait"
+            exponent = max(task.attempts - 1, 0)
+            delay = min(max_delay_seconds, base_delay_seconds * (2**exponent))
+            available_at = current_time + timedelta(seconds=delay)
+        else:
+            next_state = "failed"
+            available_at = current_time
+
+        failed_id = self._session.scalar(
+            update(AutomationTask)
+            .where(
+                AutomationTask.id == task_id,
+                AutomationTask.state == "running",
+                AutomationTask.lease_token == lease_token,
+                AutomationTask.lease_expires_at > current_time,
+            )
+            .execution_options(synchronize_session=False)
+            .values(
+                state=next_state,
+                available_at=available_at,
+                lease_owner=None,
+                lease_token=None,
+                lease_expires_at=None,
+                last_error_code=error_code[:100],
+                last_error_message=error_message[:4000],
+                updated_at=current_time,
+            )
+            .returning(AutomationTask.id)
+        )
+        return failed_id is not None
+
+    def recover_expired_leases(
+        self,
+        *,
+        limit: int = 100,
+        base_delay_seconds: int = 5,
+        max_delay_seconds: int = 300,
+        now: datetime | None = None,
+    ) -> int:
+        """Requeue expired work or fail exhausted tasks, fenced by the expired lease."""
+        if limit < 1 or base_delay_seconds < 0 or max_delay_seconds < 0:
+            raise ValueError("Recovery limits and retry delays must be non-negative.")
+        current_time = now or datetime.now(UTC)
+        expired = list(
+            self._session.execute(
+                select(AutomationTask.id, AutomationTask.attempts, AutomationTask.max_attempts)
+                .where(
+                    AutomationTask.state == "running",
+                    AutomationTask.lease_expires_at <= current_time,
+                )
+                .order_by(AutomationTask.lease_expires_at, AutomationTask.id)
+                .limit(limit)
+            )
+        )
+        recovered = 0
+        for task_id, attempts, max_attempts in expired:
+            exhausted = attempts >= max_attempts
+            if exhausted:
+                next_state = "failed"
+                available_at = current_time
+                error_code = "lease_expired_max_attempts"
+                error_message = "The worker lease expired and the retry limit was reached."
+            else:
+                next_state = "retry_wait"
+                exponent = max(attempts - 1, 0)
+                delay = min(max_delay_seconds, base_delay_seconds * (2**exponent))
+                available_at = current_time + timedelta(seconds=delay)
+                error_code = "lease_expired"
+                error_message = "The worker lease expired before the task was completed."
+
+            recovered_id = self._session.scalar(
+                update(AutomationTask)
+                .where(
+                    AutomationTask.id == task_id,
+                    AutomationTask.state == "running",
+                    AutomationTask.lease_expires_at <= current_time,
+                )
+                .execution_options(synchronize_session=False)
+            .values(
+                    state=next_state,
+                    available_at=available_at,
+                    lease_owner=None,
+                    lease_token=None,
+                    lease_expires_at=None,
+                    last_error_code=error_code,
+                    last_error_message=error_message,
+                    updated_at=current_time,
+                )
+                .returning(AutomationTask.id)
+            )
+            if recovered_id is not None:
+                recovered += 1
+        self._session.flush()
+        return recovered
+
+    def cancel(self, *, task_id: str, now: datetime | None = None) -> bool:
+        """Cancel queued or running work and revoke any active worker fencing token."""
+        current_time = now or datetime.now(UTC)
+        cancelled_id = self._session.scalar(
+            update(AutomationTask)
+            .where(
+                AutomationTask.id == task_id,
+                AutomationTask.state.in_(("queued", "retry_wait", "running")),
+            )
+            .execution_options(synchronize_session=False)
+            .values(
+                state="cancelled",
+                lease_owner=None,
+                lease_token=None,
+                lease_expires_at=None,
+                updated_at=current_time,
+            )
+            .returning(AutomationTask.id)
+        )
+        return cancelled_id is not None
+
 
 
 class ResumeRepository:
