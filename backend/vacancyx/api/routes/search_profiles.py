@@ -15,10 +15,14 @@ from vacancyx.api.schemas.search_profiles import (
     SearchProfileRead,
 )
 from vacancyx.db.session import get_session
-from vacancyx.matching.criteria import CandidateSnapshot, JobSnapshot, MatchCriteria
+from vacancyx.matching.criteria import (
+    CandidateSnapshot,
+    JobSnapshot,
+    MatchCriteria,
+    MatchingRuleSet,
+)
 from vacancyx.matching.engine import MatchingEngine, MatchResult
-from vacancyx.matching.criteria import MatchingRuleSet
-from vacancyx.models import CandidateProfile, Job, SearchProfile
+from vacancyx.models import CandidateProfile, SearchProfile
 from vacancyx.repositories.jobs import JobSearchRepository
 from vacancyx.services.search_profiles import SearchProfileService
 
