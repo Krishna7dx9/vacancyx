@@ -37,7 +37,9 @@ function DiscoveryPanel({ onJobsRefresh }: Props) {
           : available;
       });
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not load discovery sources and tasks.");
+      setError(
+        cause instanceof Error ? cause.message : "Could not load discovery sources and tasks.",
+      );
     } finally {
       setBusy(null);
     }
@@ -72,7 +74,10 @@ function DiscoveryPanel({ onJobsRefresh }: Props) {
         ...created.items,
         ...current.filter((task) => !created.items.some((item) => item.id === task.id)),
       ].slice(0, 30));
-      setNotice("Queued " + created.items.length + " source refresh task(s). Start the local worker to execute them.");
+      setNotice(
+        "Queued " + created.items.length + " source refresh task(s). "
+        + "Start the local worker to execute them.",
+      );
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not queue source discovery.");
     } finally {
@@ -122,7 +127,8 @@ function DiscoveryPanel({ onJobsRefresh }: Props) {
         <span className="result-count">{tasks.length} recent tasks</span>
       </div>
       <p className="workflow-muted">
-        Discovery runs in a separate local worker. Configure public Greenhouse or Lever board identifiers in your environment, then keep the worker running while tasks execute.
+        Discovery runs in a separate local worker. Configure public Greenhouse or Lever board
+        identifiers in your environment, then keep the worker running while tasks execute.
       </p>
 
       {(error || notice) && (
@@ -154,7 +160,8 @@ function DiscoveryPanel({ onJobsRefresh }: Props) {
         <div className="empty-state discovery-empty">
           <strong>No public job boards configured.</strong>
           <span>
-            Set VACANCYX_GREENHOUSE_BOARDS or VACANCYX_LEVER_SITES in .env and restart the API and worker. Only official public board identifiers are accepted.
+            Set VACANCYX_GREENHOUSE_BOARDS or VACANCYX_LEVER_SITES in .env and restart the API
+            and worker. Only official public board identifiers are accepted.
           </span>
         </div>
       )}
