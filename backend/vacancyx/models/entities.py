@@ -274,7 +274,9 @@ class ApplicationBatch(TimestampMixin, Base):
     status: Mapped[str] = mapped_column(String(30), nullable=False, default="reviewing")
 
     items: Mapped[list[ApplicationBatchItem]] = relationship(
-        back_populates="batch", cascade="all, delete-orphan", order_by="ApplicationBatchItem.created_at"
+        back_populates="batch",
+        cascade="all, delete-orphan",
+        order_by="ApplicationBatchItem.created_at",
     )
 
 
