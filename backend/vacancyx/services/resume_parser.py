@@ -196,7 +196,7 @@ class ResumeParseService:
             resume = self._session.get(Resume, resume_id)
             if resume is None:
                 return None
-            if resume.parse_status != "parsed" or resume.parsed_content is None:
+            if resume.parse_status not in {"parsed", "reviewed"} or resume.parsed_content is None:
                 raise ResumeParseError("Parse the resume successfully before reviewing its fields.")
             content = dict(resume.parsed_content)
             existing_review = content.get("reviewed_fields", {})
