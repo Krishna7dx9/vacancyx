@@ -14,10 +14,11 @@ Source of truth for product scope and engineering decisions. Update docs and tes
 9. [Roadmap](roadmap/engineering-roadmap.md)
 10. [Delivery workflow](operations/delivery-workflow.md)
 
-## Implemented API slices
+## Implemented API and domain slices
 - [Candidate profiles](api/candidate-profiles.md)
 - [Candidate answer library](api/candidate-answers.md)
 - [Job-source adapters](api/job-source-adapters.md)
 - [Job discovery and ingestion](api/job-discovery.md)
+- [Explainable job matching](api/job-matching.md)
 
 PRD defines behavior; architecture defines boundaries; ADRs record decisions, alternatives and consequences; roadmap exit criteria define completion.
