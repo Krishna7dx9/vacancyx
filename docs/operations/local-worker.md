@@ -16,7 +16,7 @@ Keep the computer and database available while the worker is running. Press Ctrl
 
 ## Diagnostic task
 
-The only built-in handler at this stage is `system.echo`. It verifies queue claiming, execution, and result persistence; it does not discover jobs or interact with employer portals.
+The built-in `system.echo` handler verifies queue claiming, execution, and result persistence. When public boards are configured, the worker also registers `jobs.discover_source`, which fetches one configured Greenhouse or Lever board through its public JSON API and persists normalized jobs and provenance observations. It does not interact with employer application portals.
 
 ```bash
 python - <<'PY'
@@ -50,14 +50,14 @@ Environment settings use the `VACANCYX_` prefix:
 | `WORKER_RETRY_BASE_DELAY_SECONDS` | 5 | First retry delay |
 | `WORKER_RETRY_MAX_DELAY_SECONDS` | 300 | Maximum exponential retry delay |
 
-Each task has a unique idempotency key and bounded attempt count. Claims use a per-claim fencing token. A handler can call `context.heartbeat()` during long work. Completion and failure are accepted only while the token is current and the lease is still live; a worker that wakes after its lease has expired cannot overwrite a newer attempt.
+Each task has a unique idempotency key and bounded attempt count. Claims use a per-claim fencing token. Discovery renews the lease between pages. Completion and failure are accepted only while the token is current and the lease is still live; a worker that wakes after its lease has expired cannot overwrite a newer attempt.
 
 Retryable failures use bounded exponential backoff. Permanent failures move to `failed`; unknown task types move to `needs_attention` instead of being silently discarded. Expired leases are recovered on each worker poll. Cancellation revokes a running task's lease token.
 
 ## Current limits
 
 - This is a local worker runtime, not an always-on hosted service. The computer must remain on.
-- The default registry only contains the diagnostic echo handler. Job discovery and browser submission handlers are separate future integrations.
+- With no source configuration, only the diagnostic echo handler is registered. Configure public boards to enable the discovery handler; browser submission handlers remain a separate future integration.
 - Task handlers must make external side effects idempotent using the task idempotency key. A process can crash after an external side effect but before saving success.
 - No task payloads are written to application logs. Keep personal data out of diagnostic task payloads.
 - The queue is SQLite-first. A multi-host worker fleet should wait until PostgreSQL and concurrency/load tests justify it.
