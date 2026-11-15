@@ -16,6 +16,7 @@ function DiscoveryPanel({ onJobsRefresh }: Props) {
   const [sources, setSources] = useState<DiscoverySource[]>([]);
   const [tasks, setTasks] = useState<DiscoveryTask[]>([]);
   const [selectedSourceKeys, setSelectedSourceKeys] = useState<string[]>([]);
+  const [sourceSelectionInitialized, setSourceSelectionInitialized] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -32,10 +33,11 @@ function DiscoveryPanel({ onJobsRefresh }: Props) {
       setTasks(taskResponse.items);
       setSelectedSourceKeys((current) => {
         const available = sourceResponse.items.map((source) => source.source_key);
-        return current.length
+        return sourceSelectionInitialized
           ? current.filter((key) => available.includes(key))
           : available;
       });
+      setSourceSelectionInitialized(true);
     } catch (cause) {
       setError(
         cause instanceof Error ? cause.message : "Could not load discovery sources and tasks.",
