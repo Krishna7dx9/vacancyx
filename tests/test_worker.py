@@ -359,3 +359,22 @@ def test_handler_registry_rejects_duplicate_task_types() -> None:
     registry.register("test.echo", lambda payload, context: payload)
     with pytest.raises(ValueError, match="already registered"):
         registry.register("test.echo", lambda payload, context: payload)
+
+
+def test_worker_rejects_non_json_results(session_factory) -> None:
+    task_id = enqueue(session_factory, idempotency_key="invalid-result")
+    registry = TaskHandlerRegistry()
+    registry.register(
+        "test.echo",
+        lambda _payload, _context: {"not_json": object()},
+    )
+    worker = TaskWorker(
+        session_factory=session_factory,
+        handlers=registry,
+        worker_id="worker-invalid-result",
+    )
+
+    assert worker.run_once()
+    task = read_task(session_factory, task_id)
+    assert task.state == "failed"
+    assert task.last_error_code == "invalid_task_result"
