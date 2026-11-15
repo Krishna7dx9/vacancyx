@@ -23,8 +23,18 @@ def upgrade() -> None:
         sa.Column("last_run_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("run_number", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("last_error_code", sa.String(length=100), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.func.now(),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.func.now(),
+            nullable=False,
+        ),
         sa.CheckConstraint(
             "interval_seconds >= 60 AND interval_seconds <= 2592000",
             name="ck_discovery_schedules_interval",
