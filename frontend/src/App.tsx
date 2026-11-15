@@ -35,9 +35,9 @@ function App() {
   const [candidateSkills, setCandidateSkills] = useState("");
   const [candidateLocation, setCandidateLocation] = useState("");
   const [profileName, setProfileName] = useState("My software engineering search");
-  const [targetTitles, setTargetTitles] = useState("Backend Engineer, Software Engineer");
+  const [targetTitles, setTargetTitles] = useState("");
   const [requiredSkills, setRequiredSkills] = useState("");
-  const [excludedKeywords, setExcludedKeywords] = useState("Internship, unpaid");
+  const [excludedKeywords, setExcludedKeywords] = useState("");
   const [allowedLocations, setAllowedLocations] = useState("");
   const [workModes, setWorkModes] = useState("");
   const [employmentTypes, setEmploymentTypes] = useState("");
@@ -125,6 +125,17 @@ function App() {
   async function createSearchProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selectedCandidateId) return;
+    if (minimumSalary.trim()) {
+      const amount = Number(minimumSalary);
+      if (!Number.isFinite(amount) || amount < 0) {
+        setError("Enter a valid non-negative minimum salary.");
+        return;
+      }
+      if (!/^[A-Za-z]{3}$/.test(salaryCurrency.trim())) {
+        setError("Enter a three-letter currency with the minimum salary.");
+        return;
+      }
+    }
     setBusy("profile");
     setError("");
     setNotice("");
