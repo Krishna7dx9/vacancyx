@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 
+import ApplicationWorkflow from "./ApplicationWorkflow";
+
 import {
   apiRequest,
   type Candidate,
@@ -32,6 +34,8 @@ function App() {
   const [matches, setMatches] = useState<SearchProfileMatchResponse | null>(null);
 
   const [candidateName, setCandidateName] = useState("");
+  const [candidateEmail, setCandidateEmail] = useState("");
+  const [candidatePhone, setCandidatePhone] = useState("");
   const [candidateSkills, setCandidateSkills] = useState("");
   const [candidateLocation, setCandidateLocation] = useState("");
   const [profileName, setProfileName] = useState("My software engineering search");
@@ -105,6 +109,8 @@ function App() {
         method: "POST",
         body: JSON.stringify({
           display_name: candidateName,
+          email: candidateEmail.trim() || null,
+          phone: candidatePhone.trim() || null,
           skills: splitTerms(candidateSkills),
           location: candidateLocation.trim() || null,
         }),
@@ -112,6 +118,8 @@ function App() {
       setCandidates((current) => [...current, candidate]);
       setSelectedCandidateId(candidate.id);
       setCandidateName("");
+      setCandidateEmail("");
+      setCandidatePhone("");
       setCandidateSkills("");
       setCandidateLocation("");
       setNotice("Candidate profile created.");
@@ -279,6 +287,14 @@ function App() {
                 <label className="field">
                   <span>Display name</span>
                   <input value={candidateName} onChange={(event) => setCandidateName(event.target.value)} required maxLength={160} />
+                </label>
+                <label className="field">
+                  <span>Email <small>optional</small></span>
+                  <input type="email" value={candidateEmail} onChange={(event) => setCandidateEmail(event.target.value)} placeholder="name@example.com" />
+                </label>
+                <label className="field">
+                  <span>Phone <small>optional</small></span>
+                  <input value={candidatePhone} onChange={(event) => setCandidatePhone(event.target.value)} placeholder="Phone number" />
                 </label>
                 <label className="field">
                   <span>Skills <small>comma-separated</small></span>
@@ -477,6 +493,13 @@ function App() {
               </div>
             )}
           </section>
+          <ApplicationWorkflow
+            candidate={selectedCandidate ?? null}
+            jobs={jobs?.items ?? []}
+            onCandidateUpdated={(updated) =>
+              setCandidates((current) => current.map((item) => item.id === updated.id ? updated : item))
+            }
+          />
         </section>
       </div>
 

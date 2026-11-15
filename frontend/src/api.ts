@@ -1,6 +1,8 @@
 export type Candidate = {
   id: string;
   display_name: string;
+  email: string | null;
+  phone: string | null;
   location: string | null;
   skills: string[];
   is_active: boolean;
@@ -76,6 +78,112 @@ export type SearchProfileMatchResponse = {
   offset: number;
 };
 
+export type Resume = {
+  id: string;
+  candidate_id: string;
+  original_filename: string;
+  media_type: string;
+  file_size_bytes: number;
+  checksum_sha256: string;
+  parse_status: "uploaded" | "parsed" | "reviewed" | "failed" | string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ResumeParseResult = {
+  id: string;
+  parse_status: string;
+  parsed_content: {
+    suggested_fields?: {
+      emails?: string[];
+      phone_numbers?: string[];
+      urls?: string[];
+    };
+    reviewed_fields?: {
+      display_name?: string;
+      email?: string;
+      phone?: string;
+      location?: string;
+      skills?: string[];
+      links?: Record<string, string>;
+    };
+    warnings?: string[];
+    extracted_text?: string;
+  } | null;
+};
+
+export type CandidateAnswer = {
+  id: string;
+  candidate_id: string;
+  question: string;
+  answer_text: string;
+  category: string | null;
+  tags: string[];
+  source: string;
+  current_revision: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ApplicationSnapshot = {
+  candidate: Record<string, unknown>;
+  job: Record<string, unknown>;
+  resume: { id: string; filename: string; checksum_sha256: string; parse_status: string } | null;
+  answers: Array<{
+    id: string;
+    question: string;
+    answer: string;
+    category: string | null;
+    tags: string[];
+    revision: number;
+    content_hash: string;
+  }>;
+  custom_fields: Record<string, string>;
+  readiness: {
+    status: "ready_for_review" | "needs_attention";
+    missing_fields: string[];
+    selected_answer_count: number;
+  };
+};
+
+export type Application = {
+  id: string;
+  candidate_id: string;
+  job_id: string;
+  resume_id: string | null;
+  status: string;
+  current_revision: number;
+  submitted_at: string | null;
+  created_at: string;
+  updated_at: string;
+  latest_revision: {
+    id: string;
+    revision: number;
+    content_hash: string;
+    content_snapshot: ApplicationSnapshot;
+    resume_id: string | null;
+    created_at: string;
+  } | null;
+};
+
+async function readError(response: Response): Promise<string> {
+  let message = `Request failed (${response.status})`;
+  try {
+    const payload: { detail?: unknown } = await response.json();
+    if (typeof payload.detail === "string") {
+      message = payload.detail;
+    } else if (Array.isArray(payload.detail)) {
+      message = payload.detail
+        .map((item: { msg?: string }) => item.msg ?? "Invalid input")
+        .join("; ");
+    }
+  } catch {
+    // Keep the status-based message when the server response is not JSON.
+  }
+  return message;
+}
+
 export async function apiRequest<T>(
   path: string,
   options: RequestInit = {},
@@ -88,22 +196,14 @@ export async function apiRequest<T>(
     },
   });
 
-  if (!response.ok) {
-    let message = `Request failed (${response.status})`;
-    try {
-      const payload: { detail?: unknown } = await response.json();
-      if (typeof payload.detail === "string") {
-        message = payload.detail;
-      } else if (Array.isArray(payload.detail)) {
-        message = payload.detail
-          .map((item: { msg?: string }) => item.msg ?? "Invalid input")
-          .join("; ");
-      }
-    } catch {
-      // Keep the status-based message when the server response is not JSON.
-    }
-    throw new Error(message);
-  }
+  if (!response.ok) throw new Error(await readError(response));
+  return (await response.json()) as T;
+}
 
+export async function uploadFile<T>(path: string, file: File): Promise<T> {
+  const body = new FormData();
+  body.append("file", file);
+  const response = await fetch(`/api/v1${path}`, { method: "POST", body });
+  if (!response.ok) throw new Error(await readError(response));
   return (await response.json()) as T;
 }
