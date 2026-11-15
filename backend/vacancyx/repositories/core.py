@@ -89,7 +89,7 @@ class TaskRepository:
             ):
                 raise ValueError(
                     "idempotency_key is already used for a different task request."
-                )
+                ) from error
             return existing
 
         task = AutomationTask(
