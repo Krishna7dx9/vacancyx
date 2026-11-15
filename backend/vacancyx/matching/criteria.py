@@ -33,6 +33,25 @@ class JobSnapshot(BaseModel):
     salary_currency: str | None = Field(default=None, min_length=3, max_length=3)
     status: str = "open"
 
+    @field_validator("title", "company_name")
+    @classmethod
+    def normalize_required_text(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("Job title and company name must not be blank.")
+        return normalized
+
+    @field_validator("description", "location", "work_mode", "employment_type")
+    @classmethod
+    def normalize_optional_text(cls, value: str | None) -> str | None:
+        normalized = value.strip() if value is not None else None
+        return normalized or None
+
+    @field_validator("salary_currency")
+    @classmethod
+    def uppercase_job_currency(cls, value: str | None) -> str | None:
+        return value.upper() if value is not None else None
+
     @model_validator(mode="after")
     def validate_salary_range(self) -> "JobSnapshot":
         if (
