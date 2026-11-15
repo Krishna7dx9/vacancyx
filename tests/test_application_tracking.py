@@ -4,6 +4,7 @@ from collections.abc import Iterator
 from datetime import UTC, datetime
 
 from fastapi.testclient import TestClient
+import pytest
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
