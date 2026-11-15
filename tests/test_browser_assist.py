@@ -2,8 +2,11 @@
 import pytest
 
 from vacancyx.services.browser_assist import (
-    BrowserAssistPolicyError, PortalField, build_fill_plan,
-    detect_manual_interruption, validate_portal_url,
+    BrowserAssistPolicyError,
+    PortalField,
+    build_fill_plan,
+    detect_manual_interruption,
+    validate_portal_url,
 )
 
 
@@ -31,7 +34,12 @@ def test_fill_plan_maps_only_known_safe_text_fields() -> None:
             PortalField("unknown", "Why should we hire you?", "textarea"),
             PortalField("password", "Password", "password"),
         ],
-        {"candidate": {"display_name": "Synthetic Candidate", "email": "candidate@example.test"}},
+        {
+            "candidate": {
+                "display_name": "Synthetic Candidate",
+                "email": "candidate@example.test",
+            }
+        },
     )
     assert [(item.field_name, item.value) for item in plan.fields] == [
         ("applicant_name", "Synthetic Candidate"),
