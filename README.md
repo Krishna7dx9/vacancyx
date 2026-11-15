@@ -2,7 +2,7 @@
 
 Local-first job discovery and application workflow platform.
 
-> Status: implementation in progress. Backend foundations, SQLite persistence and recovery, candidate profile APIs, secure local resume storage, resume parsing/review, reusable answer library, job-source ingestion, explainable matching, job search APIs, the local React workspace, immutable application preparation, and revision-bound batch review are implemented. The local durable worker runtime is being completed; source-specific background handlers, browser automation, outcome tracking, and production hardening remain unfinished.
+> Status: implementation in progress. Backend foundations, SQLite persistence and recovery, candidate profile APIs, secure local resume storage, resume parsing/review, reusable answer library, job-source ingestion, explainable matching, job search APIs, the local React workspace, immutable application preparation, and revision-bound batch review are implemented. The local durable worker runtime is implemented with fenced leases, retries, recovery, and a diagnostic handler; source-specific background handlers, browser automation, outcome tracking, and production hardening remain unfinished.
 
 VacancyX is a configurable product for candidate profiles, resume management, job discovery, explainable matching, application preparation, batch review, supported browser automation, and outcome tracking.
 
