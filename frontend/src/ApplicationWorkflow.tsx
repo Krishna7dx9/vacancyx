@@ -5,6 +5,8 @@ import {
   apiRequest,
   uploadFile,
   type Application,
+  type ApplicationBatch,
+  type ApplicationBatchDecisionResponse,
   type Candidate,
   type CandidateAnswer,
   type Job,
@@ -51,6 +53,10 @@ function ApplicationWorkflow({ candidate, jobs, onCandidateUpdated }: Props) {
   const [reviewDrafts, setReviewDrafts] = useState<Record<string, ReviewDraft>>({});
   const [answers, setAnswers] = useState<CandidateAnswer[]>([]);
   const [applications, setApplications] = useState<Application[]>([]);
+  const [batches, setBatches] = useState<ApplicationBatch[]>([]);
+  const [selectedForBatch, setSelectedForBatch] = useState<string[]>([]);
+  const [batchName, setBatchName] = useState("Application review batch");
+  const [selectedBatchItems, setSelectedBatchItems] = useState<Record<string, string[]>>({});
 
   const [candidateEmail, setCandidateEmail] = useState("");
   const [candidatePhone, setCandidatePhone] = useState("");
@@ -83,6 +89,9 @@ function ApplicationWorkflow({ candidate, jobs, onCandidateUpdated }: Props) {
       setResumes([]);
       setAnswers([]);
       setApplications([]);
+      setBatches([]);
+      setSelectedForBatch([]);
+      setSelectedBatchItems({});
       setResumeParses({});
       setReviewDrafts({});
       setCandidateEmail("");
@@ -98,17 +107,19 @@ function ApplicationWorkflow({ candidate, jobs, onCandidateUpdated }: Props) {
     let active = true;
     const load = async () => {
       try {
-        const [resumeItems, answerItems, applicationResult] = await Promise.all([
+        const [resumeItems, answerItems, applicationResult, batchItems] = await Promise.all([
           apiRequest<Resume[]>(candidatePath(candidate.id, "/resumes")),
           apiRequest<CandidateAnswer[]>(candidatePath(candidate.id, "/answers?active_only=true&limit=100")),
           apiRequest<{ items: Application[]; total: number }>(
             candidatePath(candidate.id, "/applications?limit=100"),
           ),
+          apiRequest<ApplicationBatch[]>(candidatePath(candidate.id, "/application-batches")),
         ]);
         if (!active) return;
         setResumes(resumeItems);
         setAnswers(answerItems);
         setApplications(applicationResult.items);
+        setBatches(batchItems);
         setSelectedResumeId((current) =>
           resumeItems.some((resume) => resume.id === current)
             ? current
@@ -289,6 +300,83 @@ function ApplicationWorkflow({ candidate, jobs, onCandidateUpdated }: Props) {
         ? current.filter((value) => value !== answerId)
         : [...current, answerId],
     );
+  }
+
+  function toggleApplicationForBatch(applicationId: string) {
+    setSelectedForBatch((current) =>
+      current.includes(applicationId)
+        ? current.filter((value) => value !== applicationId)
+        : [...current, applicationId],
+    );
+  }
+
+  function toggleBatchItem(batchId: string, applicationId: string) {
+    setSelectedBatchItems((current) => {
+      const selected = current[batchId] ?? [];
+      return {
+        ...current,
+        [batchId]: selected.includes(applicationId)
+          ? selected.filter((value) => value !== applicationId)
+          : [...selected, applicationId],
+      };
+    });
+  }
+
+  async function createReviewBatch(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!candidate || selectedForBatch.length === 0) return;
+    setBusy("batch-create");
+    setError("");
+    setNotice("");
+    try {
+      await apiRequest<ApplicationBatch>(candidatePath(candidate.id, "/application-batches"), {
+        method: "POST",
+        body: JSON.stringify({ name: batchName, application_ids: selectedForBatch }),
+      });
+      const refreshed = await apiRequest<ApplicationBatch[]>(candidatePath(candidate.id, "/application-batches"));
+      setBatches(refreshed);
+      setSelectedForBatch([]);
+      setNotice("Review batch created. Each item is bound to the exact application revision and hash.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not create review batch.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function decideBatch(batchId: string, decision: "approved" | "rejected") {
+    if (!candidate) return;
+    const applicationIds = selectedBatchItems[batchId] ?? [];
+    if (applicationIds.length === 0) return;
+    setBusy(`batch:${batchId}`);
+    setError("");
+    setNotice("");
+    try {
+      const response = await apiRequest<ApplicationBatchDecisionResponse>(
+        candidatePath(candidate.id, `/application-batches/${batchId}/decisions`),
+        {
+          method: "POST",
+          body: JSON.stringify({
+            decisions: applicationIds.map((application_id) => ({ application_id, decision })),
+          }),
+        },
+      );
+      setBatches((current) => current.map((batch) => batch.id === batchId ? response.batch : batch));
+      setSelectedBatchItems((current) => ({ ...current, [batchId]: [] }));
+      const applicationResult = await apiRequest<{ items: Application[]; total: number }>(
+        candidatePath(candidate.id, "/applications?limit=100"),
+      );
+      setApplications(applicationResult.items);
+      const counts = response.results.reduce<Record<string, number>>((acc, item) => {
+        acc[item.result] = (acc[item.result] ?? 0) + 1;
+        return acc;
+      }, {});
+      setNotice(`Batch decisions recorded: ${Object.entries(counts).map(([key, value]) => `${value} ${key.replace("_", " ")}`).join(", ")}.`);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not save batch decisions.");
+    } finally {
+      setBusy(null);
+    }
   }
 
   async function prepareApplication(event: FormEvent<HTMLFormElement>) {
@@ -501,6 +589,11 @@ function ApplicationWorkflow({ candidate, jobs, onCandidateUpdated }: Props) {
 
           <section className="workflow-subpanel">
             <div className="workflow-section-heading"><h3>Prepared applications</h3><span>{applications.length}</span></div>
+            <form className="batch-create-form" onSubmit={createReviewBatch}>
+              <label className="field"><span>Batch name</span><input value={batchName} onChange={(event) => setBatchName(event.target.value)} maxLength={120} required /></label>
+              <p className="workflow-muted">Select prepared applications below, then create one review batch. An application can belong to only one active batch.</p>
+              <button className="button button-secondary" type="submit" disabled={selectedForBatch.length === 0 || busy === "batch-create"}>{busy === "batch-create" ? "Creating…" : `Create batch from ${selectedForBatch.length} selected`}</button>
+            </form>
             {applications.length ? (
               <div className="workflow-list">
                 {applications.map((application) => {
@@ -513,6 +606,7 @@ function ApplicationWorkflow({ candidate, jobs, onCandidateUpdated }: Props) {
                         <div><strong>{String(snapshot?.job.title ?? "Application draft")}</strong><span>{String(snapshot?.job.company_name ?? "Company unknown")}</span></div>
                         <span className="status-pill">{application.status}</span>
                       </div>
+                      {application.status === "prepared" && <label className="check-row batch-select-row"><input type="checkbox" checked={selectedForBatch.includes(application.id)} onChange={() => toggleApplicationForBatch(application.id)} /><span>Add this draft to a review batch</span></label>}
                       <div className="application-metadata">
                         <span>Revision {application.current_revision}</span>
                         <span>{snapshot?.answers.length ?? 0} answers</span>
@@ -529,7 +623,7 @@ function ApplicationWorkflow({ candidate, jobs, onCandidateUpdated }: Props) {
                         </form>
                       ) : (
                         <div className="workflow-actions">
-                          {["prepared", "ready_for_review"].includes(application.status) && <button className="text-button" type="button" onClick={() => beginEdit(application)}>Edit draft</button>}
+                          {["prepared", "ready_for_review", "approved", "rejected"].includes(application.status) && <button className="text-button" type="button" onClick={() => beginEdit(application)}>{application.status === "approved" ? "Revise approved content" : "Edit draft"}</button>}
                           {snapshot?.job && typeof snapshot.job.canonical_url === "string" && <a className="job-link" href={snapshot.job.canonical_url} target="_blank" rel="noreferrer">Original listing ↗</a>}
                         </div>
                       )}
@@ -538,6 +632,64 @@ function ApplicationWorkflow({ candidate, jobs, onCandidateUpdated }: Props) {
                 })}
               </div>
             ) : <div className="empty-state"><strong>No application drafts yet.</strong><span>Prepare one from an open job above.</span></div>}
+
+          </section>
+
+          <section className="workflow-subpanel">
+            <div className="workflow-section-heading"><h3>Batch review queue</h3><span>{batches.length} batches</span></div>
+            <p className="workflow-muted">Review exact application revisions in groups. Approvals are recorded only for the revision/hash shown here; changed drafts become stale and require a new batch.</p>
+            {batches.length ? (
+              <div className="workflow-list">
+                {batches.map((batch) => {
+                  const selected = selectedBatchItems[batch.id] ?? [];
+                  const pendingItems = batch.items.filter((item) => item.decision === "pending" && !item.is_stale);
+                  return (
+                    <article className="workflow-item" key={batch.id}>
+                      <div className="workflow-item-heading">
+                        <div><strong>{batch.name}</strong><span>{batch.total_items} applications · {new Date(batch.created_at).toLocaleString()}</span></div>
+                        <span className="status-pill">{batch.status}</span>
+                      </div>
+                      <div className="workflow-list">
+                        {batch.items.map((item) => (
+                          <div className="batch-review-item" key={item.id}>
+                            <label className="check-row">
+                              <input
+                                type="checkbox"
+                                checked={selected.includes(item.application_id)}
+                                disabled={item.decision !== "pending" || item.is_stale || batch.status !== "reviewing"}
+                                onChange={() => toggleBatchItem(batch.id, item.application_id)}
+                              />
+                              <span><strong>{item.job_title}</strong> · {item.company_name}</span>
+                            </label>
+                            <div className="application-metadata">
+                              <span>Batch revision {item.revision}</span>
+                              <span>Current revision {item.current_revision}</span>
+                              <span className="status-pill">{item.decision}</span>
+                              {item.readiness_status === "ready_for_review" ? (
+                                <span className="status-pill status-active">Ready</span>
+                              ) : (
+                                <span className="status-pill status-needs-review">Needs attention</span>
+                              )}
+                              {item.is_stale && <span className="workflow-warning">Stale revision</span>}
+                            </div>
+                            {item.missing_fields.length > 0 && <p className="workflow-warning">Missing: {item.missing_fields.join(", ")}</p>}
+                            <p className="hash-line">SHA-256 · {item.content_hash}</p>
+                          </div>
+                        ))}
+                      </div>
+                      {batch.status === "reviewing" && pendingItems.length > 0 && (
+                        <div className="workflow-actions">
+                          <button className="button button-primary" type="button" disabled={selected.length === 0 || busy === `batch:${batch.id}`} onClick={() => void decideBatch(batch.id, "approved")}>Approve selected</button>
+                          <button className="button button-secondary" type="button" disabled={selected.length === 0 || busy === `batch:${batch.id}`} onClick={() => void decideBatch(batch.id, "rejected")}>Reject selected</button>
+                          <span className="workflow-muted">{selected.length} selected</span>
+                        </div>
+                      )}
+                    </article>
+                  );
+                })}
+              </div>
+            ) : <div className="empty-state"><strong>No review batches yet.</strong><span>Select prepared applications above to create your first batch.</span></div>}
+          </section>
           </section>
         </div>
       </div>
