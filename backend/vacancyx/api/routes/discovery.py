@@ -23,6 +23,15 @@ router = APIRouter(prefix="/discovery", tags=["discovery"])
 SessionDep = Annotated[Session, Depends(get_session)]
 
 
+def _task_status(task: AutomationTask) -> TaskStatusRead:
+    """Expose the configured source identifier without returning the task payload."""
+    source_key = task.payload.get("source_key") if isinstance(task.payload, dict) else None
+    status_read = TaskStatusRead.model_validate(task)
+    return status_read.model_copy(
+        update={"source_key": source_key if isinstance(source_key, str) else None}
+    )
+
+
 @router.get("/sources", response_model=DiscoverySourcesResponse)
 def list_configured_sources() -> DiscoverySourcesResponse:
     """List enabled public job boards configured for this local VacancyX instance."""
@@ -82,7 +91,7 @@ def enqueue_discovery(
         ) from error
 
     return DiscoveryTaskEnqueueResponse(
-        items=[TaskStatusRead.model_validate(task) for task in tasks]
+        items=[_task_status(task) for task in tasks]
     )
 
 
@@ -114,7 +123,7 @@ def get_discovery_task(task_id: str, session: SessionDep) -> TaskStatusRead:
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Discovery task not found.",
         )
-    return TaskStatusRead.model_validate(task)
+    return _task_status(task)
 
 
 @router.post("/tasks/{task_id}/cancel", response_model=TaskStatusRead)
@@ -139,4 +148,4 @@ def cancel_discovery_task(task_id: str, session: SessionDep) -> TaskStatusRead:
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Discovery task not found.",
         )
-    return TaskStatusRead.model_validate(refreshed)
+    return _task_status(refreshed)
