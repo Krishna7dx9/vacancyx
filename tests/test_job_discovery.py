@@ -310,3 +310,13 @@ def test_source_listing_rejects_naive_publication_timestamp() -> None:
             source_url="https://jobs.example.test/roles/naive",
             published_at=datetime(2025, 5, 1),
         )
+
+
+def test_discovery_rejects_caller_owned_active_transaction(db_session: Session) -> None:
+    source = FixtureSource("board-one", {None: SourcePage(items=(_listing("transaction"),))})
+    service = JobDiscoveryService(db_session, _registry(source))
+    db_session.execute(select(func.count()).select_from(Job))
+
+    with pytest.raises(RuntimeError, match="no active transaction"):
+        asyncio.run(service.discover_source("board-one"))
+    db_session.rollback()
