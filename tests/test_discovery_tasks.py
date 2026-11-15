@@ -1,9 +1,6 @@
 """Discovery task enqueue, status and cancellation API tests."""
 
-from fastapi.testclient import TestClient
-
 from vacancyx.config import Settings
-from vacancyx.main import create_app
 
 
 def _configured_settings() -> Settings:
