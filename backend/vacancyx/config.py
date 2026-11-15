@@ -6,7 +6,7 @@ Environment configuration is reserved for process/runtime concerns.
 
 from functools import lru_cache
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Self
 
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -38,7 +38,7 @@ class Settings(BaseSettings):
     worker_retry_max_delay_seconds: int = Field(default=300, ge=0, le=86400)
 
     @model_validator(mode="after")
-    def validate_worker_retry_bounds(self) -> Settings:
+    def validate_worker_retry_bounds(self) -> Self:
         if self.worker_retry_max_delay_seconds < self.worker_retry_base_delay_seconds:
             raise ValueError("worker retry maximum delay must be at least the base delay.")
         return self
