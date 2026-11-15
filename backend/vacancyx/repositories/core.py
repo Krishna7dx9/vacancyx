@@ -82,6 +82,14 @@ class TaskRepository:
             select(AutomationTask).where(AutomationTask.idempotency_key == normalized_key)
         )
         if existing is not None:
+            if (
+                existing.task_type != normalized_type
+                or existing.payload != payload
+                or existing.max_attempts != max_attempts
+            ):
+                raise ValueError(
+                    "idempotency_key is already used for a different task request."
+                )
             return existing
 
         task = AutomationTask(
@@ -102,6 +110,14 @@ class TaskRepository:
             )
             if existing is None:
                 raise
+            if (
+                existing.task_type != normalized_type
+                or existing.payload != payload
+                or existing.max_attempts != max_attempts
+            ):
+                raise ValueError(
+                    "idempotency_key is already used for a different task request."
+                )
             return existing
 
     def claim_next(
@@ -116,6 +132,7 @@ class TaskRepository:
             raise ValueError("worker_id must contain 1 to 120 characters.")
         if lease_seconds < 1:
             raise ValueError("lease_seconds must be positive.")
+        worker_id = worker_id.strip()
         claimed_at = now or datetime.now(UTC)
         candidate_id = self._session.scalar(
             select(AutomationTask.id)
