@@ -197,6 +197,7 @@ export async function apiRequest<T>(
   });
 
   if (!response.ok) throw new Error(await readError(response));
+  if (response.status === 204) return undefined as T;
   return (await response.json()) as T;
 }
 
@@ -246,7 +247,6 @@ export type ApplicationBatchDecisionResponse = {
   results: ApplicationBatchDecisionResult[];
 };
 
-
 export type ApplicationStatusRead = {
   id: string;
   status: string;
@@ -269,7 +269,6 @@ export type ApplicationTimelineEventType =
   | "offer_declined"
   | "follow_up"
   | "note";
-
 
 export type DiscoverySource = {
   source_key: string;
@@ -321,4 +320,29 @@ export type DiscoveryTaskListResponse = {
 
 export type DiscoveryTaskEnqueueResponse = {
   items: DiscoveryTask[];
+};
+
+export type DiscoverySchedule = {
+  id: string;
+  name: string;
+  source_keys: string[];
+  interval_seconds: number;
+  is_enabled: boolean;
+  next_run_at: string;
+  last_run_at: string | null;
+  run_number: number;
+  last_error_code: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type DiscoveryScheduleList = {
+  items: DiscoverySchedule[];
+  total: number;
+};
+
+export type DiscoveryScheduleCreate = {
+  name: string;
+  source_keys: string[];
+  interval_seconds: number;
 };

@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
+import type { FormEvent } from "react";
 
 import {
   apiRequest,
+  type DiscoverySchedule,
+  type DiscoveryScheduleList,
   type DiscoverySource,
   type DiscoveryTask,
   type DiscoveryTaskEnqueueResponse,
@@ -12,11 +15,22 @@ type Props = {
   onJobsRefresh: () => Promise<void>;
 };
 
+const CADENCES = [
+  { label: "Every hour", seconds: 3600 },
+  { label: "Every 6 hours", seconds: 21_600 },
+  { label: "Every 12 hours", seconds: 43_200 },
+  { label: "Daily", seconds: 86_400 },
+  { label: "Weekly", seconds: 604_800 },
+];
+
 function DiscoveryPanel({ onJobsRefresh }: Props) {
   const [sources, setSources] = useState<DiscoverySource[]>([]);
   const [tasks, setTasks] = useState<DiscoveryTask[]>([]);
+  const [schedules, setSchedules] = useState<DiscoverySchedule[]>([]);
   const [selectedSourceKeys, setSelectedSourceKeys] = useState<string[]>([]);
   const [sourceSelectionInitialized, setSourceSelectionInitialized] = useState(false);
+  const [scheduleName, setScheduleName] = useState("Daily public job refresh");
+  const [scheduleInterval, setScheduleInterval] = useState(86_400);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -25,12 +39,14 @@ function DiscoveryPanel({ onJobsRefresh }: Props) {
     setBusy("refresh");
     setError("");
     try {
-      const [sourceResponse, taskResponse] = await Promise.all([
+      const [sourceResponse, taskResponse, scheduleResponse] = await Promise.all([
         apiRequest<{ items: DiscoverySource[] }>("/discovery/sources"),
         apiRequest<DiscoveryTaskListResponse>("/discovery/tasks?limit=30"),
+        apiRequest<DiscoveryScheduleList>("/discovery/schedules"),
       ]);
       setSources(sourceResponse.items);
       setTasks(taskResponse.items);
+      setSchedules(scheduleResponse.items);
       setSelectedSourceKeys((current) => {
         const available = sourceResponse.items.map((source) => source.source_key);
         return sourceSelectionInitialized
@@ -40,7 +56,7 @@ function DiscoveryPanel({ onJobsRefresh }: Props) {
       setSourceSelectionInitialized(true);
     } catch (cause) {
       setError(
-        cause instanceof Error ? cause.message : "Could not load discovery sources and tasks.",
+        cause instanceof Error ? cause.message : "Could not load discovery sources, tasks, and schedules.",
       );
     } finally {
       setBusy(null);
@@ -87,6 +103,68 @@ function DiscoveryPanel({ onJobsRefresh }: Props) {
     }
   }
 
+  async function createSchedule(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (selectedSourceKeys.length === 0) return;
+    setBusy("schedule-create");
+    setError("");
+    setNotice("");
+    try {
+      const created = await apiRequest<DiscoverySchedule>("/discovery/schedules", {
+        method: "POST",
+        body: JSON.stringify({
+          name: scheduleName,
+          source_keys: selectedSourceKeys,
+          interval_seconds: scheduleInterval,
+        }),
+      });
+      setSchedules((current) => [created, ...current]);
+      setNotice("Schedule saved. Its first discovery run is due immediately when the local scheduler is running.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not create discovery schedule.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function toggleSchedule(schedule: DiscoverySchedule) {
+    setBusy("schedule:" + schedule.id);
+    setError("");
+    setNotice("");
+    try {
+      const updated = await apiRequest<DiscoverySchedule>(
+        "/discovery/schedules/" + encodeURIComponent(schedule.id),
+        {
+          method: "PATCH",
+          body: JSON.stringify({ is_enabled: !schedule.is_enabled }),
+        },
+      );
+      setSchedules((current) => current.map((item) => item.id === updated.id ? updated : item));
+      setNotice(updated.is_enabled ? "Discovery schedule resumed." : "Discovery schedule paused.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not update discovery schedule.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function deleteSchedule(scheduleId: string) {
+    setBusy("delete-schedule:" + scheduleId);
+    setError("");
+    setNotice("");
+    try {
+      await apiRequest<void>("/discovery/schedules/" + encodeURIComponent(scheduleId), {
+        method: "DELETE",
+      });
+      setSchedules((current) => current.filter((item) => item.id !== scheduleId));
+      setNotice("Schedule deleted. Already queued discovery tasks remain in the worker queue.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not delete discovery schedule.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function cancelTask(taskId: string) {
     setBusy("cancel:" + taskId);
     setError("");
@@ -117,6 +195,17 @@ function DiscoveryPanel({ onJobsRefresh }: Props) {
     } finally {
       setBusy(null);
     }
+  }
+
+  function sourceNames(sourceKeys: string[]): string {
+    return sourceKeys.map((key) =>
+      sources.find((source) => source.source_key === key)?.company_name ?? key,
+    ).join(", ");
+  }
+
+  function cadenceLabel(seconds: number): string {
+    return CADENCES.find((cadence) => cadence.seconds === seconds)?.label
+      ?? Math.round(seconds / 3600) + " hours";
   }
 
   return (
@@ -195,8 +284,100 @@ function DiscoveryPanel({ onJobsRefresh }: Props) {
         </button>
       </div>
 
+      <form className="schedule-create-form" onSubmit={(event) => void createSchedule(event)}>
+        <div className="workflow-section-heading">
+          <h3>Recurring discovery</h3>
+          <span>{schedules.length} saved</span>
+        </div>
+        <p className="workflow-muted">
+          Schedule the selected sources to refresh automatically. The first run is due immediately;
+          later runs follow your chosen cadence.
+        </p>
+        <div className="schedule-create-fields">
+          <label className="field">
+            <span>Schedule name</span>
+            <input
+              value={scheduleName}
+              onChange={(event) => setScheduleName(event.target.value)}
+              required
+              maxLength={120}
+            />
+          </label>
+          <label className="field">
+            <span>Run frequency</span>
+            <select
+              value={scheduleInterval}
+              onChange={(event) => setScheduleInterval(Number(event.target.value))}
+            >
+              {CADENCES.map((cadence) => (
+                <option key={cadence.seconds} value={cadence.seconds}>{cadence.label}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <button
+          className="button button-secondary"
+          type="submit"
+          disabled={!selectedSourceKeys.length || busy === "schedule-create"}
+        >
+          {busy === "schedule-create" ? "Saving schedule…" : "Save recurring schedule"}
+        </button>
+      </form>
+
+      <div className="schedule-list">
+        <div className="workflow-section-heading">
+          <h3>Saved schedules</h3>
+          <span>{schedules.length}</span>
+        </div>
+        {schedules.map((schedule) => (
+          <article className="schedule-item" key={schedule.id}>
+            <div className="workflow-item-heading">
+              <div>
+                <strong>{schedule.name}</strong>
+                <span>{sourceNames(schedule.source_keys)} · {cadenceLabel(schedule.interval_seconds)}</span>
+              </div>
+              <span className={schedule.is_enabled ? "status-pill status-active" : "status-pill"}>
+                {schedule.is_enabled ? "Enabled" : "Paused"}
+              </span>
+            </div>
+            <div className="application-metadata">
+              <span>Run #{schedule.run_number}</span>
+              <span>Next: {new Date(schedule.next_run_at).toLocaleString()}</span>
+              {schedule.last_run_at && <span>Last: {new Date(schedule.last_run_at).toLocaleString()}</span>}
+            </div>
+            {schedule.last_error_code && (
+              <p className="workflow-warning">{schedule.last_error_code}: check configured public source identifiers.</p>
+            )}
+            <div className="workflow-actions schedule-actions">
+              <button
+                className="text-button"
+                type="button"
+                disabled={busy === "schedule:" + schedule.id}
+                onClick={() => void toggleSchedule(schedule)}
+              >
+                {busy === "schedule:" + schedule.id
+                  ? "Saving…"
+                  : schedule.is_enabled ? "Pause" : "Resume"}
+              </button>
+              <button
+                className="text-button text-button-danger"
+                type="button"
+                disabled={busy === "delete-schedule:" + schedule.id}
+                onClick={() => void deleteSchedule(schedule.id)}
+              >
+                {busy === "delete-schedule:" + schedule.id ? "Deleting…" : "Delete"}
+              </button>
+            </div>
+          </article>
+        ))}
+        {schedules.length === 0 && (
+          <p className="workflow-muted">No recurring schedules yet. Select one or more sources and save a schedule above.</p>
+        )}
+      </div>
+
       <div className="worker-command">
-        <span>Run in a separate terminal</span>
+        <span>Run in separate terminals on this machine</span>
+        <code>vacancyx-scheduler</code>
         <code>vacancyx-worker</code>
       </div>
 
