@@ -20,8 +20,8 @@ from vacancyx.db.session import get_session_factory
 from vacancyx.models import AutomationTask
 from vacancyx.repositories import TaskRepository
 from vacancyx.services.discovery import JobDiscoveryService
-from vacancyx.sources.registry import SourceRegistry
 from vacancyx.sources.factory import build_source_registry
+from vacancyx.sources.registry import SourceRegistry
 
 logger = logging.getLogger(__name__)
 
