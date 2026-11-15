@@ -4,7 +4,7 @@ VacancyX currently supports public Greenhouse and Lever job boards through their
 
 ## Configure boards
 
-Add one or both JSON arrays to the backend environment file and restart the API:
+Add one or both JSON arrays to the backend environment file and restart the API and worker:
 
 ```dotenv
 VACANCYX_GREENHOUSE_BOARDS='[{"board_token":"company-board-token","company_name":"Company Name"}]'
