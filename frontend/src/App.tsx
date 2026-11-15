@@ -516,7 +516,7 @@ function App() {
 
       <footer className="footer">
         <span>VacancyX · Local-first job discovery</span>
-        <span>Discovery sources and application automation are being built in stages.</span>
+        <span>Public job discovery runs locally; employer portal automation is not enabled yet.</span>
       </footer>
     </main>
   );
