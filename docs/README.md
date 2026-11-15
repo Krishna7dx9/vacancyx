@@ -13,8 +13,9 @@ Source of truth for product scope and engineering decisions. Update docs and tes
 8. [Testing/performance](quality/testing-and-performance.md)
 9. [Roadmap](roadmap/engineering-roadmap.md)
 10. [Delivery workflow](operations/delivery-workflow.md)
-11. [Local durable worker](operations/local-worker.md)
+11. [Local durable worker and scheduler](operations/local-worker.md)
 12. [Public job sources](operations/public-sources.md)
+13. [Local setup and synthetic demo](operations/demo-setup.md)
 
 ## Implemented API and domain slices
 - [Candidate profiles](api/candidate-profiles.md)
