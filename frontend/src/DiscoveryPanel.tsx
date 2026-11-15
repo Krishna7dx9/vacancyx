@@ -200,7 +200,7 @@ function DiscoveryPanel({ onJobsRefresh }: Props) {
           <article className="discovery-task-item" key={task.id}>
             <div className="workflow-item-heading">
               <div>
-                <strong>{task.result?.source_key ?? task.task_type}</strong>
+                <strong>{task.source_key ?? task.result?.source_key ?? task.task_type}</strong>
                 <span>Updated {new Date(task.updated_at).toLocaleString()}</span>
               </div>
               <span className="status-pill">{task.state.replaceAll("_", " ")}</span>
