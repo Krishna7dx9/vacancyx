@@ -1,5 +1,4 @@
 """Unit tests for the headed browser runner's safe field inventory and fill behavior."""
-from typing import Any
 
 from vacancyx.services.browser_runner import (
     fill_planned_fields,
@@ -50,7 +49,12 @@ def test_runner_fills_only_planned_visible_fields() -> None:
     )
     plan = build_fill_plan(
         fields,
-        {"candidate": {"display_name": "Synthetic Candidate", "email": "candidate@example.test"}},
+        {
+            "candidate": {
+                "display_name": "Synthetic Candidate",
+                "email": "candidate@example.test",
+            }
+        },
     )
     controls = [FakeControl(), FakeControl(visible=False)]
     filled = fill_planned_fields(FakeLocator(controls), plan)
