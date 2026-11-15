@@ -17,6 +17,7 @@ from vacancyx.worker import (
     TaskContext,
     TaskHandlerRegistry,
     TaskWorker,
+    build_default_registry,
 )
 
 
@@ -378,3 +379,22 @@ def test_worker_rejects_non_json_results(session_factory) -> None:
     task = read_task(session_factory, task_id)
     assert task.state == "failed"
     assert task.last_error_code == "invalid_task_result"
+
+
+
+def test_default_registry_exposes_only_diagnostic_echo_handler() -> None:
+    registry = build_default_registry()
+    handler = registry.get("system.echo")
+    assert handler is not None
+    context = TaskContext(
+        task_id="synthetic-task",
+        idempotency_key="synthetic-key",
+        worker_id="synthetic-worker",
+        attempt=1,
+        _heartbeat=lambda _seconds: True,
+    )
+    assert handler({"message": "hello"}, context) == {
+        "task_id": "synthetic-task",
+        "echo": {"message": "hello"},
+    }
+    assert registry.get("job.discovery") is None
