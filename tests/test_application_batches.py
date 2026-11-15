@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -13,7 +14,10 @@ from vacancyx.db.base import Base
 from vacancyx.db.session import get_session
 from vacancyx.main import create_app
 from vacancyx.models import (
+    Application,
     ApplicationApproval,
+    ApplicationBatch,
+    ApplicationBatchItem,
     ApplicationEvent,
     Job,
     Resume,
@@ -364,3 +368,90 @@ def test_application_cannot_enter_two_active_review_batches(workspace) -> None:
     )
     assert first["status"] == "reviewing"
     assert second.status_code == 409
+
+
+
+def test_batch_exposes_the_exact_revision_snapshot_for_review(workspace) -> None:
+    client, factory = workspace
+    candidate_id = _candidate(client, "Snapshot Candidate")
+    application_id = _application(
+        client, factory, candidate_id, suffix="snapshot-review"
+    )
+    application = client.get(
+        f"/api/v1/candidates/{candidate_id}/applications/{application_id}"
+    ).json()
+    batch = _create_batch(client, candidate_id, [application_id])
+    item = batch["items"][0]
+
+    assert item["content_snapshot"] == application["latest_revision"]["content_snapshot"]
+    assert item["content_snapshot"]["candidate"]["display_name"] == "Snapshot Candidate"
+    assert item["content_snapshot"]["resume"]["filename"] == "candidate-resume.pdf"
+    assert item["content_snapshot"]["readiness"]["status"] == "ready_for_review"
+
+
+def test_revised_pending_item_can_be_rebatched_and_old_batch_is_closed(workspace) -> None:
+    client, factory = workspace
+    candidate_id = _candidate(client)
+    application_id = _application(
+        client, factory, candidate_id, suffix="rebatch"
+    )
+    old_batch = _create_batch(client, candidate_id, [application_id])
+
+    revised = client.patch(
+        f"/api/v1/candidates/{candidate_id}/applications/{application_id}",
+        json={"custom_fields": {"cover_note": "Updated before approval"}},
+    )
+    assert revised.status_code == 200
+    assert revised.json()["current_revision"] == 2
+
+    new_batch = _create_batch(client, candidate_id, [application_id])
+    assert new_batch["items"][0]["revision"] == 2
+    assert new_batch["items"][0]["decision"] == "pending"
+
+    old_batch_after = client.get(
+        f"/api/v1/candidates/{candidate_id}/application-batches/{old_batch['id']}"
+    ).json()
+    assert old_batch_after["status"] == "completed"
+    assert old_batch_after["items"][0]["decision"] == "stale"
+    assert old_batch_after["items"][0]["is_stale"] is True
+
+    with factory() as session:
+        event_types = set(
+            session.scalars(
+                select(ApplicationEvent.event_type).where(
+                    ApplicationEvent.application_id == application_id
+                )
+            )
+        )
+    assert "batch_item_stale" in event_types
+
+
+def test_database_rejects_two_pending_batches_for_one_application(workspace) -> None:
+    client, factory = workspace
+    candidate_id = _candidate(client)
+    application_id = _application(
+        client, factory, candidate_id, suffix="unique-pending"
+    )
+    _create_batch(client, candidate_id, [application_id])
+
+    with factory() as session:
+        application = session.get(Application, application_id)
+        assert application is not None
+        duplicate_batch = ApplicationBatch(
+            candidate_id=candidate_id,
+            name="Concurrent duplicate",
+            status="reviewing",
+        )
+        session.add(duplicate_batch)
+        session.flush()
+        duplicate_item = ApplicationBatchItem(
+            batch_id=duplicate_batch.id,
+            application_id=application_id,
+            revision=application.current_revision,
+            content_hash=application.revisions[0].content_hash,
+            decision="pending",
+        )
+        session.add(duplicate_item)
+        with pytest.raises(IntegrityError):
+            session.flush()
+        session.rollback()
