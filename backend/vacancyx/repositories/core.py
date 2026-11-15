@@ -172,7 +172,7 @@ class TaskRepository:
         if claimed_id is None:
             return None
         self._session.flush()
-        return self._session.get(AutomationTask, claimed_id)
+        return self._session.get(AutomationTask, claimed_id, populate_existing=True)
 
     def heartbeat(
         self,
