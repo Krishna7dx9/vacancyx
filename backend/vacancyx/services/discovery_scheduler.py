@@ -59,6 +59,7 @@ class DiscoveryScheduler:
                 expected_run_number = schedule.run_number
                 next_run_number = expected_run_number + 1
                 next_run_at = now + timedelta(seconds=schedule.interval_seconds)
+                missing_sources = sorted(set(schedule.source_keys) - enabled)
                 claimed = session.execute(
                     update(DiscoverySchedule)
                     .where(
@@ -71,7 +72,7 @@ class DiscoveryScheduler:
                         run_number=next_run_number,
                         last_run_at=now,
                         next_run_at=next_run_at,
-                        last_error_code=None,
+                        last_error_code="source_not_configured" if missing_sources else None,
                         updated_at=now,
                     )
                     .execution_options(synchronize_session=False)
@@ -79,9 +80,6 @@ class DiscoveryScheduler:
                 if claimed.rowcount != 1:
                     continue
 
-                missing_sources = sorted(set(schedule.source_keys) - enabled)
-                if missing_sources:
-                    schedule.last_error_code = "source_not_configured"
                 for source_key in sorted(set(schedule.source_keys) & enabled):
                     TaskRepository(session).enqueue(
                         task_type="jobs.discover_source",
