@@ -6,5 +6,14 @@ from vacancyx.repositories.core import (
     ResumeRepository,
     TaskRepository,
 )
+from vacancyx.repositories.jobs import JobSearchRepository
+from vacancyx.repositories.search_profiles import SearchProfileRepository
 
-__all__ = ["CandidateRepository", "JobRepository", "ResumeRepository", "TaskRepository"]
+__all__ = [
+    "CandidateRepository",
+    "JobRepository",
+    "JobSearchRepository",
+    "ResumeRepository",
+    "SearchProfileRepository",
+    "TaskRepository",
+]
