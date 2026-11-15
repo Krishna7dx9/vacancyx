@@ -5,6 +5,8 @@ import {
   apiRequest,
   uploadFile,
   type Application,
+  type ApplicationBatch,
+  type ApplicationBatchDecisionResponse,
   type Candidate,
   type CandidateAnswer,
   type Job,
@@ -51,6 +53,10 @@ function ApplicationWorkflow({ candidate, jobs, onCandidateUpdated }: Props) {
   const [reviewDrafts, setReviewDrafts] = useState<Record<string, ReviewDraft>>({});
   const [answers, setAnswers] = useState<CandidateAnswer[]>([]);
   const [applications, setApplications] = useState<Application[]>([]);
+  const [batches, setBatches] = useState<ApplicationBatch[]>([]);
+  const [selectedForBatch, setSelectedForBatch] = useState<string[]>([]);
+  const [batchName, setBatchName] = useState("Application review batch");
+  const [selectedBatchItems, setSelectedBatchItems] = useState<Record<string, string[]>>({});
 
   const [candidateEmail, setCandidateEmail] = useState("");
   const [candidatePhone, setCandidatePhone] = useState("");
@@ -83,6 +89,9 @@ function ApplicationWorkflow({ candidate, jobs, onCandidateUpdated }: Props) {
       setResumes([]);
       setAnswers([]);
       setApplications([]);
+      setBatches([]);
+      setSelectedForBatch([]);
+      setSelectedBatchItems({});
       setResumeParses({});
       setReviewDrafts({});
       setCandidateEmail("");
@@ -98,17 +107,19 @@ function ApplicationWorkflow({ candidate, jobs, onCandidateUpdated }: Props) {
     let active = true;
     const load = async () => {
       try {
-        const [resumeItems, answerItems, applicationResult] = await Promise.all([
+        const [resumeItems, answerItems, applicationResult, batchItems] = await Promise.all([
           apiRequest<Resume[]>(candidatePath(candidate.id, "/resumes")),
           apiRequest<CandidateAnswer[]>(candidatePath(candidate.id, "/answers?active_only=true&limit=100")),
           apiRequest<{ items: Application[]; total: number }>(
             candidatePath(candidate.id, "/applications?limit=100"),
           ),
+          apiRequest<ApplicationBatch[]>(candidatePath(candidate.id, "/application-batches")),
         ]);
         if (!active) return;
         setResumes(resumeItems);
         setAnswers(answerItems);
         setApplications(applicationResult.items);
+        setBatches(batchItems);
         setSelectedResumeId((current) =>
           resumeItems.some((resume) => resume.id === current)
             ? current
@@ -291,6 +302,83 @@ function ApplicationWorkflow({ candidate, jobs, onCandidateUpdated }: Props) {
     );
   }
 
+  function toggleApplicationForBatch(applicationId: string) {
+    setSelectedForBatch((current) =>
+      current.includes(applicationId)
+        ? current.filter((value) => value !== applicationId)
+        : [...current, applicationId],
+    );
+  }
+
+  function toggleBatchItem(batchId: string, applicationId: string) {
+    setSelectedBatchItems((current) => {
+      const selected = current[batchId] ?? [];
+      return {
+        ...current,
+        [batchId]: selected.includes(applicationId)
+          ? selected.filter((value) => value !== applicationId)
+          : [...selected, applicationId],
+      };
+    });
+  }
+
+  async function createReviewBatch(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!candidate || selectedForBatch.length === 0) return;
+    setBusy("batch-create");
+    setError("");
+    setNotice("");
+    try {
+      await apiRequest<ApplicationBatch>(candidatePath(candidate.id, "/application-batches"), {
+        method: "POST",
+        body: JSON.stringify({ name: batchName, application_ids: selectedForBatch }),
+      });
+      const refreshed = await apiRequest<ApplicationBatch[]>(candidatePath(candidate.id, "/application-batches"));
+      setBatches(refreshed);
+      setSelectedForBatch([]);
+      setNotice("Review batch created. Each item is bound to the exact application revision and hash.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not create review batch.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function decideBatch(batchId: string, decision: "approved" | "rejected") {
+    if (!candidate) return;
+    const applicationIds = selectedBatchItems[batchId] ?? [];
+    if (applicationIds.length === 0) return;
+    setBusy(`batch:${batchId}`);
+    setError("");
+    setNotice("");
+    try {
+      const response = await apiRequest<ApplicationBatchDecisionResponse>(
+        candidatePath(candidate.id, `/application-batches/${batchId}/decisions`),
+        {
+          method: "POST",
+          body: JSON.stringify({
+            decisions: applicationIds.map((application_id) => ({ application_id, decision })),
+          }),
+        },
+      );
+      setBatches((current) => current.map((batch) => batch.id === batchId ? response.batch : batch));
+      setSelectedBatchItems((current) => ({ ...current, [batchId]: [] }));
+      const applicationResult = await apiRequest<{ items: Application[]; total: number }>(
+        candidatePath(candidate.id, "/applications?limit=100"),
+      );
+      setApplications(applicationResult.items);
+      const counts = response.results.reduce<Record<string, number>>((acc, item) => {
+        acc[item.result] = (acc[item.result] ?? 0) + 1;
+        return acc;
+      }, {});
+      setNotice(`Batch decisions recorded: ${Object.entries(counts).map(([key, value]) => `${value} ${key.replace("_", " ")}`).join(", ")}.`);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not save batch decisions.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function prepareApplication(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!candidate || !selectedJobId) return;
@@ -347,8 +435,27 @@ function ApplicationWorkflow({ candidate, jobs, onCandidateUpdated }: Props) {
       setApplications((current) =>
         current.map((item) => item.id === updated.id ? updated : item),
       );
+      setSelectedBatchItems((current) =>
+        Object.fromEntries(
+          Object.entries(current).map(([batchId, ids]) => [
+            batchId,
+            ids.filter((id) => id !== updated.id),
+          ]),
+        ),
+      );
+      let batchRefreshWarning = "";
+      try {
+        const refreshedBatches = await apiRequest<ApplicationBatch[]>(
+          candidatePath(candidate.id, "/application-batches"),
+        );
+        setBatches(refreshedBatches);
+      } catch {
+        batchRefreshWarning = " Batch status will refresh when you reload this workspace.";
+      }
       setEditingApplicationId("");
-      setNotice(`Draft revised to content revision ${updated.current_revision}. Any prior review must be repeated.`);
+      setNotice(
+        `Draft revised to content revision ${updated.current_revision}. Any prior review must be repeated.${batchRefreshWarning}`,
+      );
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not revise application.");
     } finally {
@@ -501,18 +608,41 @@ function ApplicationWorkflow({ candidate, jobs, onCandidateUpdated }: Props) {
 
           <section className="workflow-subpanel">
             <div className="workflow-section-heading"><h3>Prepared applications</h3><span>{applications.length}</span></div>
+            <form className="batch-create-form" onSubmit={createReviewBatch}>
+              <label className="field"><span>Batch name</span><input value={batchName} onChange={(event) => setBatchName(event.target.value)} maxLength={120} required /></label>
+              <p className="workflow-muted">Select prepared applications below, then create one review batch. An application can belong to only one active batch.</p>
+              <button className="button button-secondary" type="submit" disabled={selectedForBatch.length === 0 || busy === "batch-create"}>{busy === "batch-create" ? "Creating…" : `Create batch from ${selectedForBatch.length} selected`}</button>
+            </form>
             {applications.length ? (
               <div className="workflow-list">
                 {applications.map((application) => {
                   const snapshot = application.latest_revision?.content_snapshot;
                   const readiness = snapshot?.readiness;
                   const editing = editingApplicationId === application.id;
+                  const inActiveBatch = batches.some((batch) =>
+                    batch.status === "reviewing" && batch.items.some((item) =>
+                      item.application_id === application.id &&
+                      item.decision === "pending" &&
+                      !item.is_stale,
+                    ),
+                  );
                   return (
                     <article className="workflow-item application-item" key={application.id}>
                       <div className="workflow-item-heading">
                         <div><strong>{String(snapshot?.job.title ?? "Application draft")}</strong><span>{String(snapshot?.job.company_name ?? "Company unknown")}</span></div>
                         <span className="status-pill">{application.status}</span>
                       </div>
+                      {application.status === "prepared" && (
+                        <label className="check-row batch-select-row">
+                          <input
+                            type="checkbox"
+                            checked={selectedForBatch.includes(application.id)}
+                            disabled={inActiveBatch}
+                            onChange={() => toggleApplicationForBatch(application.id)}
+                          />
+                          <span>{inActiveBatch ? "Already in an active review batch" : "Add this draft to a review batch"}</span>
+                        </label>
+                      )}
                       <div className="application-metadata">
                         <span>Revision {application.current_revision}</span>
                         <span>{snapshot?.answers.length ?? 0} answers</span>
@@ -529,7 +659,7 @@ function ApplicationWorkflow({ candidate, jobs, onCandidateUpdated }: Props) {
                         </form>
                       ) : (
                         <div className="workflow-actions">
-                          {["prepared", "ready_for_review"].includes(application.status) && <button className="text-button" type="button" onClick={() => beginEdit(application)}>Edit draft</button>}
+                          {["prepared", "ready_for_review", "approved", "rejected"].includes(application.status) && <button className="text-button" type="button" onClick={() => beginEdit(application)}>{application.status === "approved" ? "Revise approved content" : "Edit draft"}</button>}
                           {snapshot?.job && typeof snapshot.job.canonical_url === "string" && <a className="job-link" href={snapshot.job.canonical_url} target="_blank" rel="noreferrer">Original listing ↗</a>}
                         </div>
                       )}
@@ -538,6 +668,113 @@ function ApplicationWorkflow({ candidate, jobs, onCandidateUpdated }: Props) {
                 })}
               </div>
             ) : <div className="empty-state"><strong>No application drafts yet.</strong><span>Prepare one from an open job above.</span></div>}
+
+          </section>
+
+          <section className="workflow-subpanel">
+            <div className="workflow-section-heading"><h3>Batch review queue</h3><span>{batches.length} batches</span></div>
+            <p className="workflow-muted">Review exact application revisions in groups. Approvals are recorded only for the revision/hash shown here; changed drafts become stale and require a new batch.</p>
+            {batches.length ? (
+              <div className="workflow-list">
+                {batches.map((batch) => {
+                  const selected = selectedBatchItems[batch.id] ?? [];
+                  const pendingItems = batch.items.filter((item) => item.decision === "pending" && !item.is_stale);
+                  return (
+                    <article className="workflow-item" key={batch.id}>
+                      <div className="workflow-item-heading">
+                        <div><strong>{batch.name}</strong><span>{batch.total_items} applications · {new Date(batch.created_at).toLocaleString()}</span></div>
+                        <span className="status-pill">{batch.status}</span>
+                      </div>
+                      <div className="workflow-list">
+                        {batch.items.map((item) => (
+                          <div className="batch-review-item" key={item.id}>
+                            <label className="check-row">
+                              <input
+                                type="checkbox"
+                                checked={selected.includes(item.application_id)}
+                                disabled={item.decision !== "pending" || item.is_stale || batch.status !== "reviewing"}
+                                onChange={() => toggleBatchItem(batch.id, item.application_id)}
+                              />
+                              <span><strong>{item.job_title}</strong> · {item.company_name}</span>
+                            </label>
+                            <div className="application-metadata">
+                              <span>Batch revision {item.revision}</span>
+                              <span>Current revision {item.current_revision}</span>
+                              <span className="status-pill">{item.decision}</span>
+                              {item.readiness_status === "ready_for_review" ? (
+                                <span className="status-pill status-active">Ready</span>
+                              ) : (
+                                <span className="status-pill status-needs-review">Needs attention</span>
+                              )}
+                              {item.is_stale && <span className="workflow-warning">Stale revision</span>}
+                            </div>
+                            {item.missing_fields.length > 0 && <p className="workflow-warning">Missing: {item.missing_fields.join(", ")}</p>}
+                            {item.content_snapshot && (
+                              <details className="batch-snapshot">
+                                <summary>Inspect exact content reviewed · revision {item.revision}</summary>
+                                <div className="batch-snapshot-content">
+                                  <div className="snapshot-group">
+                                    <strong>Candidate</strong>
+                                    <span>{String(item.content_snapshot.candidate.display_name ?? "Name missing")}</span>
+                                    <span>{String(item.content_snapshot.candidate.email ?? "Email missing")} · {String(item.content_snapshot.candidate.phone ?? "Phone missing")}</span>
+                                    <span>{String(item.content_snapshot.candidate.location ?? "Location not provided")}</span>
+                                    <span>Skills: {Array.isArray(item.content_snapshot.candidate.skills) ? item.content_snapshot.candidate.skills.join(", ") : "Not provided"}</span>
+                                  </div>
+                                  <div className="snapshot-group">
+                                    <strong>Job</strong>
+                                    <span>{String(item.content_snapshot.job.title ?? item.job_title)} · {String(item.content_snapshot.job.company_name ?? item.company_name)}</span>
+                                    <span>{String(item.content_snapshot.job.location ?? "Location unknown")} · {String(item.content_snapshot.job.work_mode ?? "Work mode unknown")}</span>
+                                    {typeof item.content_snapshot.job.canonical_url === "string" && <a className="job-link" href={item.content_snapshot.job.canonical_url} target="_blank" rel="noreferrer">Open original listing ↗</a>}
+                                    {typeof item.content_snapshot.job.description === "string" && (
+                                      <details className="snapshot-description">
+                                        <summary>Job description</summary>
+                                        <p>{item.content_snapshot.job.description}</p>
+                                      </details>
+                                    )}
+                                  </div>
+                                  <div className="snapshot-group">
+                                    <strong>Resume</strong>
+                                    <span>{item.content_snapshot.resume?.filename ?? "No resume selected"}</span>
+                                    {item.content_snapshot.resume && <span>Parse status: {item.content_snapshot.resume.parse_status}</span>}
+                                  </div>
+                                  <div className="snapshot-group">
+                                    <strong>Reusable answers ({item.content_snapshot.answers.length})</strong>
+                                    {item.content_snapshot.answers.length ? item.content_snapshot.answers.map((answer) => (
+                                      <div className="snapshot-answer" key={answer.id}>
+                                        <b>{answer.question}</b>
+                                        <p>{answer.answer}</p>
+                                        <span>Answer revision {answer.revision} · SHA-256 {answer.content_hash}</span>
+                                      </div>
+                                    )) : <span>No reusable answers selected.</span>}
+                                  </div>
+                                  {Object.entries(item.content_snapshot.custom_fields).length > 0 && (
+                                    <div className="snapshot-group">
+                                      <strong>Additional fields</strong>
+                                      {Object.entries(item.content_snapshot.custom_fields).map(([key, value]) => (
+                                        <span key={key}>{key}: {value}</span>
+                                      ))}
+                                    </div>
+                                  )}
+                                  <p className="hash-line">Snapshot SHA-256 · {item.content_hash}</p>
+                                </div>
+                              </details>
+                            )}
+                            <p className="hash-line">SHA-256 · {item.content_hash}</p>
+                          </div>
+                        ))}
+                      </div>
+                      {batch.status === "reviewing" && pendingItems.length > 0 && (
+                        <div className="workflow-actions">
+                          <button className="button button-primary" type="button" disabled={selected.length === 0 || busy === `batch:${batch.id}`} onClick={() => void decideBatch(batch.id, "approved")}>Approve selected</button>
+                          <button className="button button-secondary" type="button" disabled={selected.length === 0 || busy === `batch:${batch.id}`} onClick={() => void decideBatch(batch.id, "rejected")}>Reject selected</button>
+                          <span className="workflow-muted">{selected.length} selected</span>
+                        </div>
+                      )}
+                    </article>
+                  );
+                })}
+              </div>
+            ) : <div className="empty-state"><strong>No review batches yet.</strong><span>Select prepared applications above to create your first batch.</span></div>}
           </section>
         </div>
       </div>

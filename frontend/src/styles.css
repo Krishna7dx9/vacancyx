@@ -398,3 +398,87 @@ h1 span { color: #7ddbd0; }
 @media (max-width: 980px) {
   .workflow-grid { grid-template-columns: 1fr; }
 }
+
+
+/* Revision-bound batch review */
+.batch-create-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  margin: 12px 0 14px;
+  padding: 12px;
+  border: 1px solid #30435b;
+  border-radius: 10px;
+  background: rgba(13, 27, 44, .72);
+}
+.batch-select-row {
+  padding: 8px 9px;
+  border: 1px dashed #3a526d;
+  border-radius: 8px;
+  background: rgba(21, 39, 59, .48);
+}
+.batch-select-row input:disabled { opacity: .45; }
+.batch-review-item {
+  display: grid;
+  gap: 8px;
+  padding: 11px;
+  border: 1px solid #30435b;
+  border-radius: 9px;
+  background: rgba(12, 24, 40, .68);
+}
+.batch-review-item > .check-row strong { color: #e4edf7; }
+.batch-snapshot {
+  min-width: 0;
+  border: 1px solid #334b64;
+  border-radius: 9px;
+  background: rgba(8, 17, 30, .7);
+}
+.batch-snapshot > summary,
+.snapshot-description > summary {
+  padding: 10px 11px;
+  color: #91d9d1;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.batch-snapshot-content {
+  display: grid;
+  gap: 12px;
+  padding: 0 11px 12px;
+}
+.snapshot-group {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding-top: 10px;
+  border-top: 1px solid #293c53;
+  color: #aab9ca;
+  font-size: 10px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+.snapshot-group > strong { color: #e4edf7; font-size: 10px; }
+.snapshot-answer {
+  display: grid;
+  gap: 4px;
+  padding: 8px;
+  border-radius: 7px;
+  background: rgba(25, 43, 64, .62);
+}
+.snapshot-answer b { color: #d5e0ed; font-size: 10px; }
+.snapshot-answer p,
+.snapshot-description p {
+  margin: 0;
+  color: #aab9ca;
+  font-size: 10px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.snapshot-answer span { color: #758ba4; font-size: 9px; overflow-wrap: anywhere; }
+.snapshot-description {
+  border: 1px solid #293c53;
+  border-radius: 7px;
+}
+.snapshot-description > summary { padding: 7px 9px; }
+.snapshot-description > p { padding: 0 9px 9px; }

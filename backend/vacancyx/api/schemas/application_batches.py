@@ -1,7 +1,7 @@
 """Application batch review and decision contracts."""
 
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -76,6 +76,7 @@ class ApplicationBatchItemRead(BaseModel):
     job_title: str
     readiness_status: str | None
     missing_fields: list[str]
+    content_snapshot: dict[str, Any] | None
 
 
 class ApplicationBatchRead(BaseModel):
