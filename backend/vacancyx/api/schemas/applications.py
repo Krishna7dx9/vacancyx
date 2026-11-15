@@ -85,7 +85,7 @@ class ApplicationUpdate(BaseModel):
     def validate_resume_id(cls, value: str | None) -> str | None:
         if value is not None and (not value.strip() or len(value) > 36):
             raise ValueError("resume_id must contain 1 to 36 characters.")
-        return value
+        return value.strip() if value is not None else None
 
     @field_validator("answer_ids")
     @classmethod
