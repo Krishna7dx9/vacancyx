@@ -152,8 +152,9 @@ def test_scheduler_enqueues_due_sources_once_and_advances_schedule(workspace) ->
         schedule = session.get(DiscoverySchedule, schedule_id)
         assert schedule is not None
         assert schedule.run_number == 1
-        assert schedule.last_run_at == now
-        assert schedule.next_run_at == now + timedelta(seconds=3600)
+        assert schedule.last_run_at is not None
+        assert schedule.last_run_at.replace(tzinfo=UTC) == now
+        assert schedule.next_run_at.replace(tzinfo=UTC) == now + timedelta(seconds=3600)
         tasks = list(
             session.scalars(
                 select(AutomationTask).where(
