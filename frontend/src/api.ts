@@ -207,3 +207,40 @@ export async function uploadFile<T>(path: string, file: File): Promise<T> {
   if (!response.ok) throw new Error(await readError(response));
   return (await response.json()) as T;
 }
+
+export type ApplicationBatchItem = {
+  id: string;
+  application_id: string;
+  revision: number;
+  content_hash: string;
+  decision: "pending" | "approved" | "rejected" | "stale";
+  decided_at: string | null;
+  current_revision: number;
+  current_content_hash: string | null;
+  is_stale: boolean;
+  company_name: string;
+  job_title: string;
+  readiness_status: string | null;
+  missing_fields: string[];
+};
+
+export type ApplicationBatch = {
+  id: string;
+  candidate_id: string;
+  name: string;
+  status: "reviewing" | "completed" | "cancelled";
+  created_at: string;
+  updated_at: string;
+  items: ApplicationBatchItem[];
+  total_items: number;
+};
+
+export type ApplicationBatchDecisionResult = {
+  application_id: string;
+  result: "approved" | "rejected" | "stale" | "needs_attention";
+};
+
+export type ApplicationBatchDecisionResponse = {
+  batch: ApplicationBatch;
+  results: ApplicationBatchDecisionResult[];
+};
