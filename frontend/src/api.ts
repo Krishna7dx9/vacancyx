@@ -222,6 +222,7 @@ export type ApplicationBatchItem = {
   job_title: string;
   readiness_status: string | null;
   missing_fields: string[];
+  content_snapshot: ApplicationSnapshot | null;
 };
 
 export type ApplicationBatch = {
