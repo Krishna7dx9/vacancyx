@@ -650,3 +650,35 @@ h1 span { color: #7ddbd0; }
 @media (max-width: 560px) {
   .schedule-create-fields { grid-template-columns: 1fr; }
 }
+
+
+
+.batch-browser-assist {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid #36506c;
+  border-radius: 9px;
+  background: rgba(20, 45, 68, .38);
+}
+.batch-browser-assist > div {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.batch-browser-assist code {
+  display: block;
+  padding: 9px;
+  border: 1px solid #30435b;
+  border-radius: 7px;
+  background: rgba(4, 12, 22, .72);
+  color: #c5d7e9;
+  font-size: 10px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+.batch-browser-assist .button {
+  justify-self: start;
+}
