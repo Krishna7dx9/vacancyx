@@ -6,7 +6,6 @@ import argparse
 import logging
 import socket
 import threading
-import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
@@ -307,13 +306,15 @@ def main() -> None:
         session_factory=get_session_factory(),
         handlers=build_default_registry(),
         worker_id=args.worker_id,
-        lease_seconds=60,
+        lease_seconds=settings.worker_lease_seconds,
+        retry_base_delay_seconds=settings.worker_retry_base_delay_seconds,
+        retry_max_delay_seconds=settings.worker_retry_max_delay_seconds,
     )
     if args.once:
         worker.run_once()
         return
     try:
-        worker.run_forever(poll_interval_seconds=args.poll_interval)
+        worker.run_forever(poll_interval_seconds=args.poll_interval or settings.worker_poll_interval_seconds)
     except KeyboardInterrupt:
         logger.info("Worker shutdown requested")
 
