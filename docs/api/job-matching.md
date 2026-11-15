@@ -34,4 +34,4 @@ Target titles are soft ranking signals. Excluded keywords, required skills and e
 
 Every result records the rule-set version. Changing weights or matching semantics should create a new version and keep curated regression fixtures. The engine does not infer graduation eligibility, sponsorship, years of experience or other facts not represented in the supplied data. Those constraints should be added only with explicit fields and tests.
 
-No job match is persisted yet. Persisted JobMatch records, search-profile API integration, candidate-specific match explanations in the UI and re-evaluation workflows are later delivery work.
+The engine is exposed through candidate-owned search profiles. `POST /api/v1/candidates/{candidate_id}/search-profiles/{profile_id}/matches` evaluates up to 500 recent open jobs on demand and returns ranked jobs with full explanations. Results are not persisted yet; historical JobMatch snapshots, UI ranking, asynchronous evaluation and re-evaluation workflows remain later delivery work.
