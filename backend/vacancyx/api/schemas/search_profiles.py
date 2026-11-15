@@ -3,9 +3,9 @@
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from vacancyx.api.schemas.jobs import JobRead
 from vacancyx.matching.criteria import MatchCriteria
 from vacancyx.matching.engine import MatchResult
-from vacancyx.api.schemas.jobs import JobRead
 
 
 class SearchProfileCreate(BaseModel):
