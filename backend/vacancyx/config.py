@@ -5,6 +5,7 @@ Environment configuration is reserved for process/runtime concerns.
 """
 
 from functools import lru_cache
+from ipaddress import ip_address
 from pathlib import Path
 from typing import Literal, Self
 
@@ -43,6 +44,21 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_runtime_bounds(self) -> Self:
+        host = self.api_host.strip().casefold()
+        if host != "localhost":
+            try:
+                address = ip_address(host)
+            except ValueError as error:
+                raise ValueError(
+                    "VacancyX API binding must use localhost or a loopback IP; "
+                    "remote access is disabled until authentication is implemented."
+                ) from error
+            if not address.is_loopback:
+                raise ValueError(
+                    "VacancyX API binding must use localhost or a loopback IP; "
+                    "remote access is disabled until authentication is implemented."
+                )
+
         if self.worker_retry_max_delay_seconds < self.worker_retry_base_delay_seconds:
             raise ValueError("worker retry maximum delay must be at least the base delay.")
         source_keys = [
