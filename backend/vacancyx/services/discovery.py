@@ -135,7 +135,9 @@ class JobDiscoveryService:
 
             try:
                 page = await gate.execute(
-                    lambda cursor=cursor: adapter.fetch_page(cursor=cursor, page_size=config.page_size)
+                    lambda cursor=cursor: adapter.fetch_page(
+                        cursor=cursor, page_size=config.page_size
+                    )
                 )
             except TimeoutError:
                 errors.append("source_timeout")
