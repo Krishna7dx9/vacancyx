@@ -197,7 +197,11 @@ function App() {
 
   async function searchJobs(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    await refreshJobs();
+    try {
+      await refreshJobs();
+    } catch {
+      // refreshJobs already exposes the failure in the workspace feedback.
+    }
   }
 
   async function evaluateMatches() {
