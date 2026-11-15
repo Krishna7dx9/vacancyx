@@ -1,6 +1,6 @@
 """Persistent schedules for recurring public job discovery."""
 
-from typing import Any
+from datetime import datetime
 
 from sqlalchemy import CheckConstraint, DateTime, Index, Integer, JSON, String
 from sqlalchemy.orm import Mapped, mapped_column
@@ -19,11 +19,7 @@ class DiscoverySchedule(TimestampMixin, Base):
             name="ck_discovery_schedules_interval",
         ),
         CheckConstraint("run_number >= 0", name="ck_discovery_schedules_run_number"),
-        Index(
-            "ix_discovery_schedules_due",
-            "is_enabled",
-            "next_run_at",
-        ),
+        Index("ix_discovery_schedules_due", "is_enabled", "next_run_at"),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
@@ -31,7 +27,7 @@ class DiscoverySchedule(TimestampMixin, Base):
     source_keys: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     interval_seconds: Mapped[int] = mapped_column(Integer, nullable=False)
     is_enabled: Mapped[bool] = mapped_column(default=True, nullable=False)
-    next_run_at: Mapped[Any] = mapped_column(DateTime(timezone=True), nullable=False)
-    last_run_at: Mapped[Any | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    next_run_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     run_number: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     last_error_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
