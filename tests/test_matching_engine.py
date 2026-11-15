@@ -85,7 +85,9 @@ def test_excluded_keyword_is_a_hard_rejection() -> None:
 
 def test_missing_required_job_skill_is_a_hard_rejection() -> None:
     result = MatchingEngine().evaluate(
-        _candidate(), _job(description="Build Java services."), _criteria()
+        _candidate(),
+        _job(title="Backend Engineer", description="Build Java services."),
+        _criteria()
     )
     assert result.status == "ineligible"
     assert "required_skills_missing:Python,SQL" in result.reasons
