@@ -133,12 +133,13 @@ class JobDiscoveryService:
                 break
             requested_cursors.add(cursor)
 
-            try:
-                page = await gate.execute(
-                    lambda cursor=cursor: adapter.fetch_page(
-                        cursor=cursor, page_size=config.page_size
-                    )
+            async def fetch_page(page_cursor: str | None = cursor) -> SourcePage:
+                return await adapter.fetch_page(
+                    cursor=page_cursor, page_size=config.page_size
                 )
+
+            try:
+                page = await gate.execute(fetch_page)
             except TimeoutError:
                 errors.append("source_timeout")
                 break
