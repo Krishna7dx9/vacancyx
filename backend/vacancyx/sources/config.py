@@ -46,7 +46,7 @@ class GreenhouseBoardSetting(BaseModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    board_token: str = Field(min_length=2, max_length=80, pattern=r"^[a-zA-Z0-9_-]+$")
+    board_token: str = Field(min_length=2, max_length=69, pattern=r"^[a-zA-Z0-9_-]+$")
     company_name: str = Field(min_length=1, max_length=200)
     enabled: bool = True
 
@@ -56,6 +56,6 @@ class LeverSiteSetting(BaseModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    site_slug: str = Field(min_length=2, max_length=80, pattern=r"^[a-zA-Z0-9-]+$")
+    site_slug: str = Field(min_length=2, max_length=74, pattern=r"^[a-zA-Z0-9-]+$")
     company_name: str = Field(min_length=1, max_length=200)
     enabled: bool = True
