@@ -38,3 +38,24 @@ class SourceConfig(BaseModel):
         if not normalized:
             raise ValueError("At least one allowed host is required.")
         return tuple(normalized)
+
+
+
+class GreenhouseBoardSetting(BaseModel):
+    """One public Greenhouse board configured by its public board URL token."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    board_token: str = Field(min_length=2, max_length=69, pattern=r"^[a-zA-Z0-9_-]+$")
+    company_name: str = Field(min_length=1, max_length=200)
+    enabled: bool = True
+
+
+class LeverSiteSetting(BaseModel):
+    """One public Lever job site configured by its public site slug."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    site_slug: str = Field(min_length=2, max_length=74, pattern=r"^[a-zA-Z0-9-]+$")
+    company_name: str = Field(min_length=1, max_length=200)
+    enabled: bool = True

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 
 import ApplicationWorkflow from "./ApplicationWorkflow";
+import DiscoveryPanel from "./DiscoveryPanel";
 
 import {
   apiRequest,
@@ -175,8 +176,7 @@ function App() {
     }
   }
 
-  async function searchJobs(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function refreshJobs() {
     setBusy("jobs");
     setError("");
     setNotice("");
@@ -189,8 +189,18 @@ function App() {
       setMatches(null);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Job search failed.");
+      throw cause;
     } finally {
       setBusy(null);
+    }
+  }
+
+  async function searchJobs(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    try {
+      await refreshJobs();
+    } catch {
+      // refreshJobs already exposes the failure in the workspace feedback.
     }
   }
 
@@ -493,6 +503,7 @@ function App() {
               </div>
             )}
           </section>
+          <DiscoveryPanel onJobsRefresh={refreshJobs} />
           <ApplicationWorkflow
             candidate={selectedCandidate ?? null}
             jobs={jobs?.items ?? []}
@@ -505,7 +516,7 @@ function App() {
 
       <footer className="footer">
         <span>VacancyX · Local-first job discovery</span>
-        <span>Discovery sources and application automation are being built in stages.</span>
+        <span>Public job discovery runs locally; employer portal automation is not enabled yet.</span>
       </footer>
     </main>
   );

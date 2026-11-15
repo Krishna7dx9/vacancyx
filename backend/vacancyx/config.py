@@ -11,6 +11,8 @@ from typing import Literal, Self
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from vacancyx.sources.config import GreenhouseBoardSetting, LeverSiteSetting
+
 
 class Settings(BaseSettings):
     """Runtime settings loaded from environment and optional local .env file."""
@@ -36,11 +38,24 @@ class Settings(BaseSettings):
     worker_lease_seconds: int = Field(default=60, ge=1, le=3600)
     worker_retry_base_delay_seconds: int = Field(default=5, ge=0, le=3600)
     worker_retry_max_delay_seconds: int = Field(default=300, ge=0, le=86400)
+    greenhouse_boards: list[GreenhouseBoardSetting] = Field(default_factory=list, max_length=100)
+    lever_sites: list[LeverSiteSetting] = Field(default_factory=list, max_length=100)
 
     @model_validator(mode="after")
-    def validate_worker_retry_bounds(self) -> Self:
+    def validate_runtime_bounds(self) -> Self:
         if self.worker_retry_max_delay_seconds < self.worker_retry_base_delay_seconds:
             raise ValueError("worker retry maximum delay must be at least the base delay.")
+        source_keys = [
+            "greenhouse-" + board.board_token.lower()
+            for board in self.greenhouse_boards
+            if board.enabled
+        ] + [
+            "lever-" + site.site_slug.lower()
+            for site in self.lever_sites
+            if site.enabled
+        ]
+        if len(source_keys) != len(set(source_keys)):
+            raise ValueError("Configured public job source keys must be unique.")
         return self
 
 

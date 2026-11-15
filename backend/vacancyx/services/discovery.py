@@ -102,10 +102,12 @@ class JobDiscoveryService:
         registry: SourceRegistry,
         *,
         clock: Callable[[], datetime] | None = None,
+        heartbeat: Callable[[], bool] | None = None,
     ) -> None:
         self._session = session
         self._registry = registry
         self._clock = clock or (lambda: datetime.now(UTC))
+        self._heartbeat = heartbeat
         self._jobs = JobRepository(session)
         self._observations = JobObservationRepository(session)
         self._gates: dict[str, SourceExecutionGate] = {}
@@ -134,6 +136,8 @@ class JobDiscoveryService:
         truncated = False
 
         for _page_number in range(config.max_pages_per_run):
+            if self._heartbeat is not None and not self._heartbeat():
+                raise RuntimeError("Discovery worker lease was lost before the next page.")
             if cursor in requested_cursors:
                 errors.append("pagination_cycle")
                 break
@@ -149,6 +153,12 @@ class JobDiscoveryService:
             except TimeoutError:
                 errors.append("source_timeout")
                 break
+            except SourcePolicyError:
+                errors.append("unsafe_source_url")
+                break
+            except ValueError:
+                errors.append("invalid_source_response")
+                break
             except Exception:
                 errors.append("source_request_failed")
                 break
@@ -156,6 +166,8 @@ class JobDiscoveryService:
             if len(page.items) > config.page_size:
                 errors.append("source_page_limit_exceeded")
                 break
+            if self._heartbeat is not None and not self._heartbeat():
+                raise RuntimeError("Discovery worker lease was lost before page persistence.")
 
             try:
                 canonical_urls = tuple(

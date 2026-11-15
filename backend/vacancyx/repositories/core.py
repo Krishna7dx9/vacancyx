@@ -313,7 +313,7 @@ class TaskRepository:
     ) -> int:
         """Requeue expired work or fail exhausted tasks, fenced by the expired lease."""
         if limit < 1 or base_delay_seconds < 0 or max_delay_seconds < 0:
-            raise ValueError("Recovery limits and retry delays must be non-negative.")
+            raise ValueError("Recovery limit must be positive and retry delays non-negative.")
         current_time = now or datetime.now(UTC)
         expired = list(
             self._session.execute(
@@ -350,7 +350,7 @@ class TaskRepository:
                     AutomationTask.lease_expires_at <= current_time,
                 )
                 .execution_options(synchronize_session=False)
-            .values(
+                .values(
                     state=next_state,
                     available_at=available_at,
                     lease_owner=None,
@@ -366,6 +366,30 @@ class TaskRepository:
                 recovered += 1
         self._session.flush()
         return recovered
+
+    def get(self, task_id: str) -> AutomationTask | None:
+        """Fetch one task by its opaque identifier."""
+        return self._session.get(AutomationTask, task_id, populate_existing=True)
+
+    def list(
+        self,
+        *,
+        task_type: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[AutomationTask]:
+        """Return a bounded newest-first task page for local status views."""
+        if not 1 <= limit <= 100 or offset < 0:
+            raise ValueError("Task list limit must be 1 to 100 and offset non-negative.")
+        query = select(AutomationTask)
+        if task_type is not None:
+            query = query.where(AutomationTask.task_type == task_type)
+        query = query.order_by(
+            AutomationTask.updated_at.desc(),
+            AutomationTask.created_at.desc(),
+            AutomationTask.id,
+        ).limit(limit).offset(offset)
+        return list(self._session.scalars(query))
 
     def cancel(self, *, task_id: str, now: datetime | None = None) -> bool:
         """Cancel queued or running work and revoke any active worker fencing token."""

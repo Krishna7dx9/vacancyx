@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
 import json
 import logging
 import socket
 import threading
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal
 from uuid import uuid4
 
 from sqlalchemy.orm import Session
@@ -18,6 +19,9 @@ from vacancyx.config import get_settings
 from vacancyx.db.session import get_session_factory
 from vacancyx.models import AutomationTask
 from vacancyx.repositories import TaskRepository
+from vacancyx.services.discovery import JobDiscoveryService
+from vacancyx.sources.factory import build_source_registry
+from vacancyx.sources.registry import SourceRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +73,18 @@ class TaskContext:
         return self._heartbeat(lease_seconds or self.default_lease_seconds)
 
 
-TaskHandler = Callable[[dict[str, Any], TaskContext], dict[str, Any]]
+@dataclass(frozen=True)
+class TaskOutcome:
+    """A JSON result with an explicit terminal success classification."""
+
+    result: dict[str, Any]
+    state: Literal["succeeded", "partially_succeeded"] = "succeeded"
+
+
+TaskHandler = Callable[
+    [dict[str, Any], TaskContext],
+    dict[str, Any] | TaskOutcome,
+]
 
 
 class TaskHandlerRegistry:
@@ -169,7 +184,13 @@ class TaskWorker:
             default_lease_seconds=self.lease_seconds,
         )
         try:
-            result = handler(claim.payload, context)
+            outcome = handler(claim.payload, context)
+            if isinstance(outcome, TaskOutcome):
+                result = outcome.result
+                completion_state = outcome.state
+            else:
+                result = outcome
+                completion_state = "succeeded"
             if not isinstance(result, dict):
                 raise PermanentTaskError(
                     "invalid_task_result",
@@ -213,6 +234,7 @@ class TaskWorker:
                     task_id=claim.id,
                     lease_token=claim.lease_token,
                     result=result,
+                    state=completion_state,
                 )
             if not completed:
                 logger.warning(
@@ -306,10 +328,91 @@ def _echo_handler(payload: dict[str, Any], context: TaskContext) -> dict[str, An
     return {"task_id": context.task_id, "echo": payload}
 
 
-def build_default_registry() -> TaskHandlerRegistry:
-    """Return only built-in safe diagnostic handlers; product handlers are registered explicitly."""
+def _discovery_handler(
+    session_factory: SessionFactory,
+    source_registry: SourceRegistry,
+) -> TaskHandler:
+    """Create a handler for one configured public job source."""
+
+    def handle(payload: dict[str, Any], context: TaskContext) -> dict[str, Any] | TaskOutcome:
+        source_key = payload.get("source_key")
+        if not isinstance(source_key, str) or not source_key:
+            raise PermanentTaskError("invalid_source_key", "A source key is required.")
+        try:
+            source_registry.get(source_key)
+        except (KeyError, ValueError) as error:
+            raise PermanentTaskError(
+                "unknown_source",
+                "The requested public source is not configured.",
+            ) from error
+        if not context.heartbeat():
+            raise PermanentTaskError("lease_lost", "The worker no longer owns this task lease.")
+
+        with session_factory() as session:
+            summary = asyncio.run(
+                JobDiscoveryService(
+                    session,
+                    source_registry,
+                    heartbeat=lambda: context.heartbeat(),
+                ).discover_source(source_key)
+            )
+
+        result: dict[str, Any] = {
+            "source_key": summary.source_key,
+            "status": summary.status,
+            "pages_fetched": summary.pages_fetched,
+            "listings_seen": summary.listings_seen,
+            "jobs_created": summary.jobs_created,
+            "observations_created": summary.observations_created,
+            "observations_updated": summary.observations_updated,
+            "truncated": summary.truncated,
+            "error_codes": summary.error_codes,
+        }
+        transient_codes = {"source_timeout", "source_request_failed", "persistence_failed"}
+        permanent_codes = {
+            "unsafe_listing_url",
+            "unsafe_source_url",
+            "invalid_source_response",
+            "pagination_cycle",
+            "source_page_limit_exceeded",
+        }
+        if any(code in transient_codes for code in summary.error_codes):
+            raise RetryableTaskError(
+                "source_discovery_failed",
+                "The public source could not be refreshed; the task will retry.",
+            )
+        if any(code in permanent_codes for code in summary.error_codes):
+            raise PermanentTaskError(
+                "source_discovery_rejected",
+                "The source returned unsafe or invalid data and was stopped.",
+            )
+        if summary.status == "failed" or summary.error_codes:
+            raise PermanentTaskError(
+                "source_discovery_rejected",
+                "The source returned invalid data or violated source policy.",
+            )
+        if summary.truncated:
+            return TaskOutcome(result=result, state="partially_succeeded")
+        return result
+
+    return handle
+
+
+def build_default_registry(
+    *,
+    session_factory: SessionFactory | None = None,
+    source_registry: SourceRegistry | None = None,
+) -> TaskHandlerRegistry:
+    """Register the diagnostic handler and configured public job discovery handler."""
+    if (session_factory is None) != (source_registry is None):
+        raise ValueError("session_factory and source_registry must be provided together.")
     registry = TaskHandlerRegistry()
     registry.register("system.echo", _echo_handler)
+    if session_factory is not None and source_registry is not None:
+        registry.register(
+            "jobs.discover_source",
+            _discovery_handler(session_factory, source_registry),
+        )
     return registry
 
 
@@ -341,9 +444,14 @@ def main() -> None:
         level=getattr(logging, settings.log_level),
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
+    session_factory = get_session_factory()
+    source_registry = build_source_registry(settings)
     worker = TaskWorker(
-        session_factory=get_session_factory(),
-        handlers=build_default_registry(),
+        session_factory=session_factory,
+        handlers=build_default_registry(
+            session_factory=session_factory,
+            source_registry=source_registry,
+        ),
         worker_id=args.worker_id,
         lease_seconds=settings.worker_lease_seconds,
         retry_base_delay_seconds=settings.worker_retry_base_delay_seconds,

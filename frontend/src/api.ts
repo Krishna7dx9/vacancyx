@@ -269,3 +269,56 @@ export type ApplicationTimelineEventType =
   | "offer_declined"
   | "follow_up"
   | "note";
+
+
+export type DiscoverySource = {
+  source_key: string;
+  company_name: string;
+  provider: string;
+};
+
+export type DiscoveryTaskResult = {
+  source_key?: string;
+  status?: string;
+  pages_fetched?: number;
+  listings_seen?: number;
+  jobs_created?: number;
+  observations_created?: number;
+  observations_updated?: number;
+  truncated?: boolean;
+  error_codes?: string[];
+};
+
+export type DiscoveryTask = {
+  id: string;
+  source_key: string | null;
+  task_type: string;
+  state:
+    | "queued"
+    | "running"
+    | "retry_wait"
+    | "succeeded"
+    | "partially_succeeded"
+    | "failed"
+    | "cancelled"
+    | "needs_attention";
+  attempts: number;
+  max_attempts: number;
+  available_at: string;
+  lease_expires_at: string | null;
+  last_error_code: string | null;
+  last_error_message: string | null;
+  result: DiscoveryTaskResult | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type DiscoveryTaskListResponse = {
+  items: DiscoveryTask[];
+  limit: number;
+  offset: number;
+};
+
+export type DiscoveryTaskEnqueueResponse = {
+  items: DiscoveryTask[];
+};

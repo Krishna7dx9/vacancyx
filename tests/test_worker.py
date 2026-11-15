@@ -4,18 +4,22 @@ from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from vacancyx.db.base import Base
-from vacancyx.models import AutomationTask
+from vacancyx.models import AutomationTask, Job
 from vacancyx.repositories import TaskRepository
+from vacancyx.sources.config import SourceConfig
+from vacancyx.sources.contracts import SourceCapabilities, SourceListing, SourcePage
+from vacancyx.sources.registry import SourceRegistry
 from vacancyx.worker import (
     PermanentTaskError,
     RetryableTaskError,
     TaskContext,
     TaskHandlerRegistry,
+    TaskOutcome,
     TaskWorker,
     build_default_registry,
 )
@@ -399,3 +403,82 @@ def test_default_registry_exposes_only_diagnostic_echo_handler() -> None:
         "echo": {"message": "hello"},
     }
     assert registry.get("job.discovery") is None
+
+
+
+def test_discovery_worker_handler_runs_bounded_source_ingestion(session_factory) -> None:
+    class FixtureAdapter:
+        source_key = "fixture"
+        capabilities = SourceCapabilities()
+
+        async def fetch_page(self, *, cursor: str | None, page_size: int) -> SourcePage:
+            assert cursor is None
+            assert page_size == 10
+            return SourcePage(
+                items=(
+                    SourceListing(
+                        external_id="role-1",
+                        title="Backend Engineer",
+                        company_name="Example Co",
+                        source_url="https://jobs.example/roles/1",
+                        location="Remote - India",
+                    ),
+                ),
+            )
+
+    source_config = SourceConfig(
+        source_key="fixture",
+        allowed_hosts=("jobs.example",),
+        page_size=10,
+        max_pages_per_run=2,
+    )
+    source_registry = SourceRegistry()
+    source_registry.register(FixtureAdapter(), source_config)
+    task_id = enqueue(
+        session_factory,
+        task_type="jobs.discover_source",
+        payload={"source_key": "fixture"},
+        idempotency_key="discovery-fixture-001",
+    )
+    registry = build_default_registry(
+        session_factory=session_factory,
+        source_registry=source_registry,
+    )
+    worker = TaskWorker(
+        session_factory=session_factory,
+        handlers=registry,
+        worker_id="worker-discovery",
+    )
+
+    assert worker.run_once()
+    task = read_task(session_factory, task_id)
+    assert task.state == "succeeded"
+    assert task.result is not None
+    assert task.result["jobs_created"] == 1
+    assert task.result["observations_created"] == 1
+    with session_factory() as session:
+        jobs = list(session.scalars(select(Job)))
+    assert len(jobs) == 1
+    assert jobs[0].title == "Backend Engineer"
+
+
+def test_worker_persists_partial_success_outcome(session_factory) -> None:
+    task_id = enqueue(session_factory, idempotency_key="partial-task")
+    registry = TaskHandlerRegistry()
+    registry.register(
+        "test.echo",
+        lambda _payload, _context: TaskOutcome(
+            result={"processed": 1},
+            state="partially_succeeded",
+        ),
+    )
+    worker = TaskWorker(
+        session_factory=session_factory,
+        handlers=registry,
+        worker_id="worker-partial",
+    )
+
+    assert worker.run_once()
+    task = read_task(session_factory, task_id)
+    assert task.state == "partially_succeeded"
+    assert task.result == {"processed": 1}
