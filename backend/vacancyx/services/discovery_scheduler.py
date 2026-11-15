@@ -60,7 +60,7 @@ class DiscoveryScheduler:
                 next_run_number = expected_run_number + 1
                 next_run_at = now + timedelta(seconds=schedule.interval_seconds)
                 missing_sources = sorted(set(schedule.source_keys) - enabled)
-                claimed = session.execute(
+                claimed_id = session.scalar(
                     update(DiscoverySchedule)
                     .where(
                         DiscoverySchedule.id == schedule.id,
@@ -75,9 +75,10 @@ class DiscoveryScheduler:
                         last_error_code="source_not_configured" if missing_sources else None,
                         updated_at=now,
                     )
+                    .returning(DiscoverySchedule.id)
                     .execution_options(synchronize_session=False)
                 )
-                if claimed.rowcount != 1:
+                if claimed_id is None:
                     continue
 
                 for source_key in sorted(set(schedule.source_keys) & enabled):
