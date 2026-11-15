@@ -2,7 +2,7 @@
 
 Local-first job discovery and application workflow platform.
 
-> Status: implementation in progress. Backend foundations, SQLite persistence, candidate profile APIs, secure local resume storage, bounded resume parsing/review, candidate answer library, source ingestion, explainable matching, search APIs, and initial application preparation are implemented incrementally. This is not yet a complete end-to-end application.
+> Status: implementation in progress. Backend foundations, SQLite persistence, candidate profile APIs, secure local resume storage, bounded resume parsing/review, candidate answer library, source ingestion, explainable matching, search APIs, an initial local React workspace, and application preparation are being delivered incrementally. This is not yet a complete end-to-end application.
 
 VacancyX is a configurable product for candidate profiles, resume management, job discovery, explainable matching, application preparation, batch review, supported browser automation, and outcome tracking.
 
@@ -19,6 +19,6 @@ Modular monolith with separately runnable workers; SQLite initially; future Post
 ## Cost and access
 Core runs locally. Public sites may restrict access, change interfaces, require login, or rate-limit. Respect terms and controls; never bypass CAPTCHA/MFA. Scheduled work runs only while the computer is available.
 
-See [engineering docs](docs/README.md) and [roadmap](docs/roadmap/engineering-roadmap.md). One branch at a time: test, PR, merge, verify main, then create the next. The current implementation remains backend-heavy. Application preparation is in progress; batch approval, browser automation, application tracking, production hardening, and the complete candidate-facing UI remain unfinished. Do not treat this repository as a complete application yet.
+See [engineering docs](docs/README.md) and [roadmap](docs/roadmap/engineering-roadmap.md). One branch at a time: test, PR, merge, verify main, then create the next. The current workspace supports candidate setup, job search and explainable matching; application preparation is an initial backend workflow. Batch approval, browser automation, outcome tracking, production hardening, and the complete candidate-facing experience remain unfinished.
 
 MIT License.
