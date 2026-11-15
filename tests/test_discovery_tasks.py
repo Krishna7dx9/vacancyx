@@ -1,6 +1,42 @@
 """Discovery task enqueue, status and cancellation API tests."""
 
+from collections.abc import Iterator
+
+import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import StaticPool
+
 from vacancyx.config import Settings
+from vacancyx.db.base import Base
+from vacancyx.db.session import get_session
+from vacancyx.main import create_app
+
+
+@pytest.fixture
+def workspace() -> Iterator[tuple[TestClient, sessionmaker[Session]]]:
+    engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    Base.metadata.create_all(engine)
+    factory = sessionmaker(bind=engine, expire_on_commit=False)
+
+    def override_session() -> Iterator[Session]:
+        session = factory()
+        try:
+            yield session
+        finally:
+            session.close()
+
+    app = create_app()
+    app.dependency_overrides[get_session] = override_session
+    with TestClient(app) as client:
+        yield client, factory
+    app.dependency_overrides.clear()
+    engine.dispose()
 
 
 def _configured_settings() -> Settings:
