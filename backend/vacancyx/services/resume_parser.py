@@ -204,6 +204,7 @@ class ResumeParseService:
             merged_review.update(reviewed_fields)
             content["reviewed_fields"] = merged_review
             resume.parsed_content = content
+            resume.parse_status = "reviewed"
         return resume
 
     def _resolve_storage_path(self, storage_key: str) -> Path:
