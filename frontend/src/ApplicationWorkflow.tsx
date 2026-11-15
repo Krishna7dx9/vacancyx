@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import type { FormEvent } from "react";
 
 import {
   apiRequest,
@@ -146,15 +147,8 @@ function ApplicationWorkflow({ candidate, jobs, onCandidateUpdated }: Props) {
     };
   }, [candidate?.id, jobs, candidate?.email, candidate?.phone]);
 
-  async function refreshApplications() {
-    if (!candidate) return;
-    const result = await apiRequest<{ items: Application[]; total: number }>(
-      candidatePath(candidate.id, "/applications?limit=100"),
-    );
-    setApplications(result.items);
-  }
 
-  async function saveCandidateContact(event: React.FormEvent<HTMLFormElement>) {
+  async function saveCandidateContact(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!candidate) return;
     setBusy("contact");
@@ -177,7 +171,7 @@ function ApplicationWorkflow({ candidate, jobs, onCandidateUpdated }: Props) {
     }
   }
 
-  async function uploadResume(event: React.FormEvent<HTMLFormElement>) {
+  async function uploadResume(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!candidate || !resumeFile) return;
     setBusy("upload");
@@ -260,7 +254,7 @@ function ApplicationWorkflow({ candidate, jobs, onCandidateUpdated }: Props) {
     }
   }
 
-  async function createAnswer(event: React.FormEvent<HTMLFormElement>) {
+  async function createAnswer(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!candidate) return;
     setBusy("answer");
@@ -297,7 +291,7 @@ function ApplicationWorkflow({ candidate, jobs, onCandidateUpdated }: Props) {
     );
   }
 
-  async function prepareApplication(event: React.FormEvent<HTMLFormElement>) {
+  async function prepareApplication(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!candidate || !selectedJobId) return;
     setBusy("prepare");
@@ -332,7 +326,7 @@ function ApplicationWorkflow({ candidate, jobs, onCandidateUpdated }: Props) {
     setEditCoverNote(snapshot.custom_fields.cover_note ?? "");
   }
 
-  async function saveApplicationRevision(event: React.FormEvent<HTMLFormElement>) {
+  async function saveApplicationRevision(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!candidate || !editingApplicationId) return;
     setBusy("revise");
