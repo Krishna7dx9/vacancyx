@@ -102,7 +102,7 @@ function DiscoveryPanel({ onJobsRefresh }: Props) {
     }
   }
 
-  async function createSchedule(event: React.FormEvent<HTMLFormElement>) {
+  async function createSchedule(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (selectedSourceKeys.length === 0) return;
     setBusy("schedule-create");
