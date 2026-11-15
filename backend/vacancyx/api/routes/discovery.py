@@ -6,8 +6,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from vacancyx.api.schemas.discovery import (
-    DiscoverySourcesResponse,
     DiscoverySourceRead,
+    DiscoverySourcesResponse,
     DiscoveryTaskCreate,
     DiscoveryTaskEnqueueResponse,
     DiscoveryTaskListResponse,
