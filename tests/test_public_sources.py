@@ -108,6 +108,7 @@ def test_lever_adapter_maps_salary_work_mode_and_pagination() -> None:
                         "min": 1200000,
                         "max": 1800000,
                         "currency": "INR",
+                        "interval": "year",
                     },
                     "createdAt": 1700000000000,
                 }
