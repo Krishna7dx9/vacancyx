@@ -11,8 +11,7 @@ from sqlalchemy.orm import Session
 from vacancyx.models import Job, JobObservation
 from vacancyx.repositories.core import JobRepository
 from vacancyx.repositories.observations import JobObservationRepository
-from vacancyx.sources.config import SourceConfig
-from vacancyx.sources.contracts import JobSourceAdapter, SourceListing, SourcePage
+from vacancyx.sources.contracts import SourceListing, SourcePage
 from vacancyx.sources.policy import SourceExecutionGate, SourcePolicyError
 from vacancyx.sources.registry import SourceRegistry
 
