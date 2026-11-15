@@ -3,8 +3,10 @@
 from collections.abc import Iterator
 from datetime import UTC, datetime
 
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, select
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -14,7 +16,7 @@ from vacancyx.main import create_app
 from vacancyx.models import ApplicationEvent, Job, JobObservation, Resume
 
 
-def _workspace() -> tuple[TestClient, sessionmaker[Session], object]:
+def _workspace() -> tuple[TestClient, sessionmaker[Session], Engine, FastAPI]:
     engine = create_engine(
         "sqlite://",
         connect_args={"check_same_thread": False},
@@ -32,12 +34,11 @@ def _workspace() -> tuple[TestClient, sessionmaker[Session], object]:
 
     app = create_app()
     app.dependency_overrides[get_session] = override_session
-    return TestClient(app), factory, (engine, app)
+    return TestClient(app), factory, engine, app
 
 
 def test_complete_candidate_to_verified_application_workflow() -> None:
-    client, factory, resources = _workspace()
-    engine, app = resources
+    client, factory, engine, app = _workspace()
     try:
         # 1. Create a candidate-owned profile.
         candidate_response = client.post(
