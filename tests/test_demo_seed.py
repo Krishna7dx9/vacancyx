@@ -1,11 +1,10 @@
 """Tests for the idempotent synthetic VacancyX demo seed."""
 
+import pytest
 from sqlalchemy import create_engine, select
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
-
-import pytest
 
 from vacancyx.db.base import Base
 from vacancyx.models import CandidateProfile, Job, JobObservation, SearchProfile
