@@ -45,6 +45,17 @@ class Settings(BaseSettings):
     def validate_worker_retry_bounds(self) -> Self:
         if self.worker_retry_max_delay_seconds < self.worker_retry_base_delay_seconds:
             raise ValueError("worker retry maximum delay must be at least the base delay.")
+        source_keys = [
+            "greenhouse-" + board.board_token.lower()
+            for board in self.greenhouse_boards
+            if board.enabled
+        ] + [
+            "lever-" + site.site_slug.lower()
+            for site in self.lever_sites
+            if site.enabled
+        ]
+        if len(source_keys) != len(set(source_keys)):
+            raise ValueError("Configured public job source keys must be unique.")
         return self
 
 
