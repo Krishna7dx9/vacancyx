@@ -15,6 +15,7 @@ from vacancyx.api.schemas.discovery import (
 )
 from vacancyx.config import get_settings
 from vacancyx.db.session import get_session
+from vacancyx.models import AutomationTask
 from vacancyx.repositories import TaskRepository
 from vacancyx.sources.factory import build_source_registry, configured_source_descriptors
 
@@ -61,7 +62,7 @@ def enqueue_discovery(
             detail="Unknown or disabled source keys: " + ", ".join(unknown),
         )
 
-    tasks = []
+    tasks: list[AutomationTask] = []
     try:
         with session.begin():
             repository = TaskRepository(session)
