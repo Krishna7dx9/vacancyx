@@ -47,6 +47,7 @@ def enqueue(
             task_type=task_type,
             payload=payload or {},
             idempotency_key=idempotency_key,
+            available_at=datetime(2026, 1, 1, tzinfo=UTC),
             max_attempts=max_attempts,
         )
         return task.id
