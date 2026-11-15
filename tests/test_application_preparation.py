@@ -208,6 +208,12 @@ def test_resume_must_be_reviewed_before_application_is_ready(workspace) -> None:
     )
     assert reviewed.status_code == 200
     assert reviewed.json()["parse_status"] == "reviewed"
+    reviewed_again = client.patch(
+        f"/api/v1/resumes/{resume_id}/parse/review",
+        json={"skills": ["Python", "SQL"]},
+    )
+    assert reviewed_again.status_code == 200
+    assert reviewed_again.json()["parse_status"] == "reviewed"
 
     revised = client.patch(
         f"/api/v1/candidates/{candidate_id}/applications/{created.json()['id']}",
