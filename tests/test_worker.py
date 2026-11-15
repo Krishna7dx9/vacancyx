@@ -128,7 +128,7 @@ def test_retryable_failure_uses_bounded_backoff_and_exhausts_attempts(session_fa
 
     waiting = read_task(session_factory, task_id)
     assert waiting.state == "retry_wait"
-    assert waiting.available_at == now + timedelta(seconds=11)
+    assert waiting.available_at.replace(tzinfo=UTC) == now + timedelta(seconds=11)
     assert waiting.lease_token is None
 
     with session_factory() as session, session.begin():
@@ -180,7 +180,7 @@ def test_expired_lease_is_recovered_and_old_worker_is_fenced(session_factory) ->
 
     waiting = read_task(session_factory, task_id)
     assert waiting.state == "retry_wait"
-    assert waiting.available_at == now + timedelta(seconds=9)
+    assert waiting.available_at.replace(tzinfo=UTC) == now + timedelta(seconds=9)
     assert waiting.lease_token is None
 
     with session_factory() as session, session.begin():
