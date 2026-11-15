@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import Select, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
@@ -15,6 +15,7 @@ from vacancyx.models import (
     ApplicationBatch,
     ApplicationBatchItem,
     ApplicationEvent,
+    ApplicationRevision,
     CandidateProfile,
 )
 
@@ -213,6 +214,7 @@ class ApplicationBatchService:
                         decided_at=now,
                     )
                     self.session.add(approval)
+                    self.session.flush()
                     item.decision = decision
                     item.decided_at = now
                     application.status = decision
@@ -241,7 +243,7 @@ class ApplicationBatchService:
         return {"batch": self.get(candidate_id, batch_id), "results": outcomes}
 
     @staticmethod
-    def _batch_query():
+    def _batch_query() -> Select[tuple[ApplicationBatch]]:
         return select(ApplicationBatch).options(
             selectinload(ApplicationBatch.items)
             .selectinload(ApplicationBatchItem.application)
@@ -252,7 +254,7 @@ class ApplicationBatchService:
         )
 
     @staticmethod
-    def _current_revision(application: Application):
+    def _current_revision(application: Application) -> ApplicationRevision | None:
         return next(
             (
                 revision
