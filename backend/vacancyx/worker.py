@@ -371,6 +371,7 @@ def _discovery_handler(
         transient_codes = {"source_timeout", "source_request_failed", "persistence_failed"}
         permanent_codes = {
             "unsafe_listing_url",
+            "unsafe_source_url",
             "pagination_cycle",
             "source_page_limit_exceeded",
         }
