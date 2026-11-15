@@ -102,10 +102,12 @@ class JobDiscoveryService:
         registry: SourceRegistry,
         *,
         clock: Callable[[], datetime] | None = None,
+        heartbeat: Callable[[], bool] | None = None,
     ) -> None:
         self._session = session
         self._registry = registry
         self._clock = clock or (lambda: datetime.now(UTC))
+        self._heartbeat = heartbeat
         self._jobs = JobRepository(session)
         self._observations = JobObservationRepository(session)
         self._gates: dict[str, SourceExecutionGate] = {}
@@ -134,6 +136,8 @@ class JobDiscoveryService:
         truncated = False
 
         for _page_number in range(config.max_pages_per_run):
+            if self._heartbeat is not None and not self._heartbeat():
+                raise RuntimeError("Discovery worker lease was lost before the next page.")
             if cursor in requested_cursors:
                 errors.append("pagination_cycle")
                 break
