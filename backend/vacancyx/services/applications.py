@@ -232,7 +232,7 @@ class ApplicationService:
             "resume": self._resume_snapshot(resume),
             "answers": self._answer_snapshots(answers),
             "custom_fields": custom_fields,
-            "readiness": self._readiness(candidate, resume, answers),
+            "readiness": self._readiness(candidate, resume, len(answers)),
         }
 
     @staticmethod
@@ -255,13 +255,19 @@ class ApplicationService:
                     CandidateAnswerRevision.revision == answer.current_revision,
                 )
             )
+            if revision is None:
+                raise ApplicationConflictError(
+                    "A selected answer is missing its current immutable revision."
+                )
             snapshots.append(
                 {
                     "id": answer.id,
-                    "question": answer.question,
-                    "answer": answer.answer_text,
-                    "revision": answer.current_revision,
-                    "content_hash": revision.content_hash if revision else None,
+                    "question": revision.question_snapshot,
+                    "answer": revision.answer_snapshot,
+                    "category": revision.category_snapshot,
+                    "tags": list(revision.tags_snapshot),
+                    "revision": revision.revision,
+                    "content_hash": revision.content_hash,
                 }
             )
         return snapshots
@@ -270,7 +276,7 @@ class ApplicationService:
     def _readiness(
         candidate: CandidateProfile,
         resume: Resume | None,
-        answers: list[CandidateAnswer],
+        answer_count: int,
     ) -> dict[str, Any]:
         missing = []
         if not candidate.email:
@@ -279,12 +285,12 @@ class ApplicationService:
             missing.append("candidate.phone")
         if resume is None:
             missing.append("resume")
-        if resume is not None and resume.parse_status not in {"parsed", "reviewed"}:
+        if resume is not None and resume.parse_status != "reviewed":
             missing.append("resume.review")
         return {
             "status": "ready_for_review" if not missing else "needs_attention",
             "missing_fields": missing,
-            "selected_answer_count": len(answers),
+            "selected_answer_count": answer_count,
         }
 
     @staticmethod
