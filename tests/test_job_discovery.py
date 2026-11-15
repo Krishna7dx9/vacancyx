@@ -178,7 +178,9 @@ def test_source_failure_preserves_previously_committed_pages(db_session: Session
         {None: SourcePage(items=(_listing("page-one"),), next_cursor="page-two")},
         failures={"page-two"},
     )
-    result = asyncio.run(JobDiscoveryService(db_session, _registry(source)).discover_source("board-one"))
+    result = asyncio.run(
+        JobDiscoveryService(db_session, _registry(source)).discover_source("board-one")
+    )
 
     assert result.status == "partial"
     assert result.pages_fetched == 1
@@ -271,7 +273,10 @@ def test_first_published_at_keeps_earliest_timezone_aware_value(db_session: Sess
 
     db_session.expire_all()
     earlier = original.model_copy(
-        update={"published_at": datetime(2024, 5, 1, tzinfo=UTC), "title": "Senior Backend Engineer"}
+        update={
+            "published_at": datetime(2024, 5, 1, tzinfo=UTC),
+            "title": "Senior Backend Engineer",
+        }
     )
     source._pages[None] = SourcePage(items=(earlier,))
     asyncio.run(service.discover_source("board-one"))
