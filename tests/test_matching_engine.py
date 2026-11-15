@@ -169,7 +169,9 @@ def test_skill_matching_uses_term_boundaries() -> None:
     result = MatchingEngine().evaluate(candidate, job, MatchCriteria())
 
     assert result.status == "eligible"
-    assert all(component.name != "skills" for component in result.components)
+    skills = next(component for component in result.components if component.name == "skills")
+    assert skills.matched_terms == ()
+    assert skills.raw_score == 0
 
 
 def test_rule_set_is_versioned_and_weights_must_sum_to_one_hundred() -> None:
@@ -185,7 +187,13 @@ def test_rule_set_is_versioned_and_weights_must_sum_to_one_hundred() -> None:
     assert result.rule_version == "2.1"
 
     with pytest.raises(ValueError, match="sum to 100"):
-        MatchingRuleSet(role_weight=50, skill_weight=20, location_weight=10, work_mode_weight=10, salary_weight=5)
+        MatchingRuleSet(
+            role_weight=50,
+            skill_weight=20,
+            location_weight=10,
+            work_mode_weight=10,
+            salary_weight=5,
+        )
 
 
 def test_salary_criteria_requires_explicit_currency() -> None:
