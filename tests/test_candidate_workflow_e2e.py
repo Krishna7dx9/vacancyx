@@ -1,5 +1,6 @@
-"""End-to-end API workflow from candidate matching through verified application tracking."""
+"""End-to-end API workflow from source ingestion through verified application tracking."""
 
+import asyncio
 from collections.abc import Iterator
 from datetime import UTC, datetime
 
@@ -14,6 +15,36 @@ from vacancyx.db.base import Base
 from vacancyx.db.session import get_session
 from vacancyx.main import create_app
 from vacancyx.models import ApplicationEvent, Job, JobObservation, Resume
+from vacancyx.services.discovery import JobDiscoveryService
+from vacancyx.sources.config import SourceConfig
+from vacancyx.sources.contracts import SourceCapabilities, SourceListing, SourcePage
+from vacancyx.sources.registry import SourceRegistry
+
+
+class SyntheticPublicSource:
+    """Deterministic source adapter; no network or employer portal is contacted."""
+
+    source_key = "synthetic-greenhouse"
+    capabilities = SourceCapabilities(pagination=False, published_at=True)
+
+    async def fetch_page(self, *, cursor: str | None, page_size: int) -> SourcePage:
+        assert cursor is None
+        assert page_size >= 1
+        return SourcePage(
+            items=(
+                SourceListing(
+                    external_id="job-1001",
+                    title="Backend Engineer",
+                    company_name="Example Systems",
+                    source_url="https://jobs.example.test/backend-engineer",
+                    description="Build Python and SQL APIs using FastAPI.",
+                    location="Remote, India",
+                    work_mode="Remote",
+                    employment_type="Full-time",
+                    published_at=datetime(2026, 11, 1, tzinfo=UTC),
+                ),
+            )
+        )
 
 
 def _workspace() -> tuple[TestClient, sessionmaker[Session], Engine, FastAPI]:
@@ -54,36 +85,43 @@ def test_complete_candidate_to_verified_application_workflow() -> None:
         assert candidate_response.status_code == 201
         candidate_id = candidate_response.json()["id"]
 
-        # 2. Simulate one normalized public-source listing and its provenance.
-        now = datetime.now(UTC)
-        with factory() as session, session.begin():
-            job = Job(
-                canonical_url="https://jobs.example.test/backend-engineer",
-                company_name="Example Systems",
-                title="Backend Engineer",
-                description="Build Python and SQL APIs using FastAPI.",
-                location="Remote, India",
-                work_mode="Remote",
-                employment_type="Full-time",
-                last_verified_at=now,
-                status="open",
+        # 2. Ingest a normalized public-source listing through the real discovery service.
+        source = SyntheticPublicSource()
+        registry = SourceRegistry()
+        registry.register(
+            source,
+            SourceConfig(
+                source_key=source.source_key,
+                allowed_hosts=("jobs.example.test",),
+                requests_per_minute=120,
+                timeout_seconds=1,
+                page_size=10,
+                max_pages_per_run=1,
+            ),
+        )
+        with factory() as session:
+            discovery = asyncio.run(
+                JobDiscoveryService(session, registry).discover_source(source.source_key)
             )
-            session.add(job)
-            session.flush()
-            session.add(
-                JobObservation(
-                    job_id=job.id,
-                    source_key="synthetic-greenhouse",
-                    external_id="job-1001",
-                    source_url=job.canonical_url,
-                    first_seen_at=now,
-                    last_seen_at=now,
-                    evidence={"fixture": "synthetic", "provider": "test"},
+            assert discovery.status == "completed"
+            assert discovery.pages_fetched == 1
+            assert discovery.jobs_created == 1
+            assert discovery.observations_created == 1
+            job = session.scalar(
+                select(Job).where(
+                    Job.canonical_url == "https://jobs.example.test/backend-engineer"
                 )
             )
+            assert job is not None
             job_id = job.id
+            observation = session.scalar(
+                select(JobObservation).where(JobObservation.job_id == job_id)
+            )
+            assert observation is not None
+            assert observation.source_key == source.source_key
+            assert observation.external_id == "job-1001"
 
-        # 3. Create explicit search criteria and evaluate the normalized job.
+        # 3. Create explicit search criteria and evaluate the discovered job.
         profile_response = client.post(
             f"/api/v1/candidates/{candidate_id}/search-profiles",
             json={
@@ -220,7 +258,7 @@ def test_complete_candidate_to_verified_application_workflow() -> None:
                 select(JobObservation).where(JobObservation.job_id == job_id)
             )
         assert observation is not None
-        assert observation.source_key == "synthetic-greenhouse"
+        assert observation.source_key == source.source_key
         assert {event.event_type for event in audit_events} >= {
             "prepared",
             "batch_added",
