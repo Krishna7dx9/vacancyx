@@ -4,7 +4,7 @@ VacancyX supports public Greenhouse and Lever job boards through their public JS
 
 ## Database-managed sources
 
-Public boards can be created and managed through the loopback-only API and stored in SQLite. The source-management form in the workspace is a separate follow-up; these endpoints are available now.
+Public boards can be created and managed in the Background Discovery workspace. Settings are stored in SQLite and can also be managed through the loopback-only API.
 
 - `GET /api/v1/discovery/source-configs` lists environment and database sources, including disabled sources.
 - `POST /api/v1/discovery/source-configs` adds a database-managed source.
@@ -50,7 +50,7 @@ There are no built-in employer slugs. Configure only boards verified as official
 
 ## Run discovery
 
-1. Add sources through the API or `.env`.
+1. Add sources in the Manage public sources section or bootstrap them through `.env`.
 2. Open the Background Discovery panel and select enabled boards.
 3. Queue selected sources. The API creates one idempotent task per source and returns immediately.
 4. Run `vacancyx-worker` in a separate terminal.
@@ -59,7 +59,7 @@ There are no built-in employer slugs. Configure only boards verified as official
 
 For recurring discovery, create a schedule in the same panel and keep both `vacancyx-scheduler` and `vacancyx-worker` running in separate terminals. The computer must remain on; missed intervals are coalesced after restart.
 
-Restart the API, scheduler, and worker after changing source configuration so all processes load the same source registry. The operations summary reports configured sources, enabled/due schedules, task states, expired leases, and local process liveness.
+Database-managed source changes appear in the API immediately; restart the scheduler and worker so they reload the same source registry. Changes to environment-managed `.env` entries require restarting the API, scheduler, and worker. The operations summary reports configured sources, enabled/due schedules, task states, expired leases, and local process liveness.
 
 ## API routes
 

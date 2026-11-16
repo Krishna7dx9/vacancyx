@@ -10,6 +10,7 @@ import {
   type DiscoveryTaskEnqueueResponse,
   type DiscoveryTaskListResponse,
   type OperationsSummary,
+  type PublicJobSourceConfig,
 } from "./api";
 
 type Props = {
@@ -26,6 +27,10 @@ const CADENCES = [
 
 function DiscoveryPanel({ onJobsRefresh }: Props) {
   const [sources, setSources] = useState<DiscoverySource[]>([]);
+  const [sourceConfigs, setSourceConfigs] = useState<PublicJobSourceConfig[]>([]);
+  const [newSourceProvider, setNewSourceProvider] = useState<"greenhouse" | "lever">("greenhouse");
+  const [newSourceKey, setNewSourceKey] = useState("");
+  const [newSourceCompany, setNewSourceCompany] = useState("");
   const [tasks, setTasks] = useState<DiscoveryTask[]>([]);
   const [schedules, setSchedules] = useState<DiscoverySchedule[]>([]);
   const [operations, setOperations] = useState<OperationsSummary | null>(null);
@@ -41,13 +46,15 @@ function DiscoveryPanel({ onJobsRefresh }: Props) {
     setBusy("refresh");
     setError("");
     try {
-      const [sourceResponse, taskResponse, scheduleResponse, operationsResponse] = await Promise.all([
+      const [sourceResponse, sourceConfigResponse, taskResponse, scheduleResponse, operationsResponse] = await Promise.all([
         apiRequest<{ items: DiscoverySource[] }>("/discovery/sources"),
+        apiRequest<PublicJobSourceConfig[]>("/discovery/source-configs"),
         apiRequest<DiscoveryTaskListResponse>("/discovery/tasks?limit=30"),
         apiRequest<DiscoveryScheduleList>("/discovery/schedules"),
         apiRequest<OperationsSummary>("/operations/summary"),
       ]);
       setSources(sourceResponse.items);
+      setSourceConfigs(sourceConfigResponse);
       setTasks(taskResponse.items);
       setSchedules(scheduleResponse.items);
       setOperations(operationsResponse);
@@ -70,6 +77,78 @@ function DiscoveryPanel({ onJobsRefresh }: Props) {
   useEffect(() => {
     void refreshData();
   }, []);
+
+  async function createSourceConfiguration(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy("source-create");
+    setError("");
+    setNotice("");
+    try {
+      const created = await apiRequest<PublicJobSourceConfig>("/discovery/source-configs", {
+        method: "POST",
+        body: JSON.stringify({
+          provider: newSourceProvider,
+          external_key: newSourceKey.trim(),
+          company_name: newSourceCompany.trim(),
+        }),
+      });
+      setNewSourceKey("");
+      setNewSourceCompany("");
+      setSelectedSourceKeys((current) => [...new Set([...current, created.source_key])]);
+      setNotice(created.company_name + " was added. Restart the worker and scheduler to load it.");
+      await refreshData();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not add public source.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function updateSourceConfiguration(
+    source: PublicJobSourceConfig,
+    changes: { company_name?: string; is_enabled?: boolean },
+  ) {
+    setBusy("source:" + source.source_key);
+    setError("");
+    setNotice("");
+    try {
+      const updated = await apiRequest<PublicJobSourceConfig>(
+        "/discovery/source-configs/" + encodeURIComponent(source.source_key),
+        {
+          method: "PATCH",
+          body: JSON.stringify(changes),
+        },
+      );
+      setNotice(updated.company_name + " source settings saved. Restart the worker and scheduler to apply changes.");
+      await refreshData();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not update public source.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function deleteSourceConfiguration(source: PublicJobSourceConfig) {
+    const confirmed = window.confirm(
+      "Remove " + source.company_name + "? Existing schedules that reference it will need to be updated.",
+    );
+    if (!confirmed) return;
+    setBusy("source-delete:" + source.source_key);
+    setError("");
+    setNotice("");
+    try {
+      await apiRequest<void>(
+        "/discovery/source-configs/" + encodeURIComponent(source.source_key),
+        { method: "DELETE" },
+      );
+      setNotice(source.company_name + " was removed from source configuration.");
+      await refreshData();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not delete public source.");
+    } finally {
+      setBusy(null);
+    }
+  }
 
   function toggleSource(sourceKey: string) {
     setSelectedSourceKeys((current) =>
@@ -271,8 +350,8 @@ function DiscoveryPanel({ onJobsRefresh }: Props) {
         </div>
       )}
       <p className="workflow-muted">
-        Discovery runs in a separate local worker. Configure public Greenhouse or Lever board
-        identifiers in your environment, then keep the worker running while tasks execute.
+        Manage public Greenhouse and Lever boards here. After changing sources, restart the local
+        worker and scheduler so both processes load the updated configuration.
       </p>
 
       {(error || notice) && (
@@ -283,6 +362,116 @@ function DiscoveryPanel({ onJobsRefresh }: Props) {
           </button>
         </div>
       )}
+
+      <div className="source-management">
+        <div className="workflow-section-heading">
+          <h3>Manage public sources</h3>
+          <span>{sourceConfigs.length} configured</span>
+        </div>
+        <form className="source-create-form" onSubmit={(event) => void createSourceConfiguration(event)}>
+          <label className="field">
+            <span>Provider</span>
+            <select
+              value={newSourceProvider}
+              onChange={(event) => setNewSourceProvider(event.target.value as "greenhouse" | "lever")}
+            >
+              <option value="greenhouse">Greenhouse</option>
+              <option value="lever">Lever</option>
+            </select>
+          </label>
+          <label className="field">
+            <span>{newSourceProvider === "greenhouse" ? "Greenhouse board token" : "Lever site slug"}</span>
+            <input
+              value={newSourceKey}
+              onChange={(event) => setNewSourceKey(event.target.value)}
+              placeholder={newSourceProvider === "greenhouse" ? "e.g. acme" : "e.g. acme"}
+              required
+              minLength={2}
+              maxLength={newSourceProvider === "greenhouse" ? 69 : 74}
+              pattern={newSourceProvider === "greenhouse" ? "[A-Za-z0-9_-]+" : "[A-Za-z0-9-]+"}
+            />
+          </label>
+          <label className="field">
+            <span>Company display name</span>
+            <input
+              value={newSourceCompany}
+              onChange={(event) => setNewSourceCompany(event.target.value)}
+              placeholder="e.g. Acme"
+              required
+              maxLength={200}
+            />
+          </label>
+          <button
+            className="button button-primary"
+            type="submit"
+            disabled={busy === "source-create" || !newSourceKey.trim() || !newSourceCompany.trim()}
+          >
+            {busy === "source-create" ? "Adding…" : "Add public source"}
+          </button>
+        </form>
+        <div className="source-config-list">
+          {sourceConfigs.map((source) => (
+            <article className="source-config-item" key={source.source_key}>
+              <div className="source-config-heading">
+                <div>
+                  <strong>{source.company_name}</strong>
+                  <span>{source.provider} · {source.source_key}</span>
+                </div>
+                <span className={source.is_enabled ? "status-pill status-active" : "status-pill"}>
+                  {source.is_enabled ? "Enabled" : "Disabled"}
+                </span>
+              </div>
+              <div className="source-config-controls">
+                {source.managed_by === "database" ? (
+                  <>
+                    <label className="field source-name-field">
+                      <span>Display name</span>
+                      <input
+                        value={source.company_name}
+                        maxLength={200}
+                        onChange={(event) => setSourceConfigs((current) => current.map((item) =>
+                          item.source_key === source.source_key
+                            ? { ...item, company_name: event.target.value }
+                            : item
+                        ))}
+                      />
+                    </label>
+                    <button
+                      className="text-button"
+                      type="button"
+                      disabled={busy === "source:" + source.source_key || !source.company_name.trim()}
+                      onClick={() => void updateSourceConfiguration(source, { company_name: source.company_name })}
+                    >
+                      Save name
+                    </button>
+                    <button
+                      className="text-button"
+                      type="button"
+                      disabled={busy === "source:" + source.source_key}
+                      onClick={() => void updateSourceConfiguration(source, { is_enabled: !source.is_enabled })}
+                    >
+                      {source.is_enabled ? "Disable" : "Enable"}
+                    </button>
+                    <button
+                      className="text-button text-button-danger"
+                      type="button"
+                      disabled={busy === "source-delete:" + source.source_key}
+                      onClick={() => void deleteSourceConfiguration(source)}
+                    >
+                      {busy === "source-delete:" + source.source_key ? "Deleting…" : "Delete"}
+                    </button>
+                  </>
+                ) : (
+                  <span className="source-readonly-note">Environment-managed · edit in .env</span>
+                )}
+              </div>
+            </article>
+          ))}
+          {sourceConfigs.length === 0 && (
+            <p className="workflow-muted">No sources configured yet. Add an official public board above.</p>
+          )}
+        </div>
+      </div>
 
       {sources.length ? (
         <div className="discovery-source-list">
@@ -304,8 +493,8 @@ function DiscoveryPanel({ onJobsRefresh }: Props) {
         <div className="empty-state discovery-empty">
           <strong>No public job boards configured.</strong>
           <span>
-            Set VACANCYX_GREENHOUSE_BOARDS or VACANCYX_LEVER_SITES in .env and restart the API
-            and worker. Only official public board identifiers are accepted.
+            Add an official public board in the source manager below. Only Greenhouse board tokens
+            and Lever site slugs are accepted.
           </span>
         </div>
       )}
