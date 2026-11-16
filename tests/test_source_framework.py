@@ -149,3 +149,17 @@ def test_read_bounded_response_rejects_declared_and_streamed_oversize() -> None:
             await read_bounded_response(streamed, max_bytes=1024)
 
     asyncio.run(scenario())
+
+
+
+def test_read_bounded_response_rejects_compressed_payloads() -> None:
+    async def scenario() -> None:
+        compressed = httpx.Response(
+            200,
+            headers={"Content-Encoding": "gzip"},
+            content=b"compressed",
+        )
+        with pytest.raises(SourcePolicyError, match="Compressed"):
+            await read_bounded_response(compressed, max_bytes=1024)
+
+    asyncio.run(scenario())
