@@ -16,6 +16,7 @@ Source of truth for product scope and engineering decisions. Update docs and tes
 11. [Local durable worker and scheduler](operations/local-worker.md)
 12. [Public job sources](operations/public-sources.md)
 13. [Local setup and synthetic demo](operations/demo-setup.md)
+14. [Release acceptance and recovery checklist](operations/release-checklist.md)
 
 ## Implemented API and domain slices
 - [Candidate profiles](api/candidate-profiles.md)
