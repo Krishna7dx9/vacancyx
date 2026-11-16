@@ -113,6 +113,14 @@ def _api_response(route: Any) -> None:
             "offset": 0,
         }
     elif path.startswith("/jobs"):
+        if "query=" in request.url and STATE.get("fail_next_job_search"):
+            STATE["fail_next_job_search"] = False
+            route.fulfill(
+                status=503,
+                content_type="application/json",
+                body=json.dumps({"detail": "Synthetic temporary job search failure."}),
+            )
+            return
         body = {
             "items": [_job()] if "query=" in request.url else [],
             "total": 1 if "query=" in request.url else 0,
@@ -489,7 +497,12 @@ def test_workspace_candidate_search_and_matching_flow() -> None:
             ).to_be_visible()
             expect(page.get_by_text("Smoke daily refresh")).to_be_visible()
 
+            STATE["fail_next_job_search"] = True
             page.get_by_label("Role, company or keyword").fill("Backend Engineer")
+            page.get_by_role("button", name="Search jobs").click()
+            expect(
+                page.get_by_text("Synthetic temporary job search failure.")
+            ).to_be_visible()
             page.get_by_role("button", name="Search jobs").click()
             expect(page.get_by_role("heading", name="Backend Engineer")).to_be_visible()
             page.get_by_role("button", name="Evaluate my matches").click()
