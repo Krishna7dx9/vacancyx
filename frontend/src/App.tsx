@@ -22,8 +22,8 @@ function safeExternalHref(value: string | null): string | null {
   if (!value) return null;
   try {
     const url = new URL(value);
-    const host = url.hostname.toLowerCase().replace(/\\.$/, "");
-    const isIpv4 = /^\\d{1,3}(\\.\\d{1,3}){3}$/.test(host);
+    const host = url.hostname.toLowerCase().replace(/\.$/, "");
+    const isIpv4 = /^\d{1,3}(\.\d{1,3}){3}$/.test(host);
     if (
       url.protocol !== "https:"
       || url.username
