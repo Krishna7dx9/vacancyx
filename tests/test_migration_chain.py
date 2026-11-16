@@ -49,7 +49,14 @@ def test_full_migration_chain_upgrades_and_downgrades_discovery_schedules(tmp_pa
             source_columns = {
                 column["name"] for column in inspector.get_columns("public_job_sources")
             }
-            assert {"id", "source_key", "provider", "external_key", "company_name", "is_enabled"} <= source_columns
+            assert {
+                "id",
+                "source_key",
+                "provider",
+                "external_key",
+                "company_name",
+                "is_enabled",
+            } <= source_columns
 
             command.downgrade(config, "0004_unique_pending_batch_item")
             downgraded_tables = set(inspect(connection).get_table_names())
