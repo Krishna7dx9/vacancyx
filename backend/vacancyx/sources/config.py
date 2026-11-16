@@ -16,6 +16,7 @@ class SourceConfig(BaseModel):
     timeout_seconds: float = Field(default=15.0, gt=0, le=60)
     max_pages_per_run: int = Field(default=10, ge=1, le=100)
     page_size: int = Field(default=25, ge=1, le=100)
+    max_response_bytes: int = Field(default=5 * 1024 * 1024, ge=1024, le=20 * 1024 * 1024)
     user_agent: str = Field(
         default="VacancyX/0.1 (local job discovery; respects source policies)",
         min_length=8,
