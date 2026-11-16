@@ -22,6 +22,11 @@ class FakeControl:
         self.value = value
 
 
+class FailingControl(FakeControl):
+    def fill(self, value: str) -> None:
+        raise RuntimeError("synthetic control failure")
+
+
 class FakeBody:
     def __init__(self, text: str) -> None:
         self.text = text
@@ -256,9 +261,7 @@ def test_mock_employer_portal_fill_failure_reports_partial_count(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     page = FakePage()
-    page.form_locator.controls[1].fill = lambda _value: (_ for _ in ()).throw(
-        RuntimeError("synthetic control failure")
-    )
+    page.form_locator.controls[1] = FailingControl()
     browser = _install_fake_playwright(monkeypatch, page)
 
     result = browser_runner.run_browser_assist(
