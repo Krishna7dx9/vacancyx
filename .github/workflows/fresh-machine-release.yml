@@ -1,0 +1,89 @@
+name: Fresh Machine Release Verification
+
+on:
+  pull_request:
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - "pyproject.toml"
+      - "alembic.ini"
+      - ".github/workflows/fresh-machine-release.yml"
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - "pyproject.toml"
+      - "alembic.ini"
+      - ".github/workflows/fresh-machine-release.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fresh-machine-release-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  clean-install:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      VACANCYX_DATABASE_URL: sqlite:////tmp/vacancyx-release-smoke.db
+      VACANCYX_STORAGE_DIR: /tmp/vacancyx-release-smoke-storage
+      VACANCYX_ENVIRONMENT: test
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install from a clean checkout
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      - name: Apply all database migrations to an empty database
+        run: alembic upgrade head
+
+      - name: Seed the synthetic demo twice to verify idempotency
+        run: |
+          vacancyx-demo-seed
+          vacancyx-demo-seed
+
+      - name: Verify API liveness, database readiness, and OpenAPI
+        run: |
+          python - <<'PY'
+          from fastapi.testclient import TestClient
+          from vacancyx.main import create_app
+
+          with TestClient(create_app()) as client:
+              live = client.get("/health/live")
+              ready = client.get("/health/ready")
+              schema = client.get("/openapi.json")
+              assert live.status_code == 200, live.text
+              assert live.json() == {"status": "alive"}
+              assert ready.status_code == 200, ready.text
+              assert ready.json() == {"status": "ready"}
+              assert schema.status_code == 200, schema.text
+              assert "/api/v1/jobs" in schema.json()["paths"]
+          PY
+
+      - name: Verify a second empty database can migrate independently
+        run: |
+          VACANCYX_DATABASE_URL=sqlite:////tmp/vacancyx-release-empty.db alembic upgrade head
+
+      - name: Install frontend dependencies from lockfile
+        working-directory: frontend
+        run: npm ci
+
+      - name: Type-check and build frontend from clean install
+        working-directory: frontend
+        run: |
+          npm run typecheck
+          npm run build
