@@ -72,7 +72,7 @@ def test_verify_backup_reports_integrity_schema_and_migration_version(tmp_path) 
     from sqlalchemy import text
 
     from vacancyx.db.backup import backup_sqlite_database
-    from vacancyx.db.backup_cli import verify_sqlite_backup
+    from vacancyx.backup_cli import verify_sqlite_backup
 
     source = build_engine(f"sqlite:///{tmp_path / 'source.sqlite3'}")
     try:
