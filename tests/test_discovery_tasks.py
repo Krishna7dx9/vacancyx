@@ -154,7 +154,9 @@ def test_discovery_task_status_and_cancel_are_candidate_independent(workspace, m
 
 
 
-def test_database_source_configuration_crud_and_discovery_integration(workspace, monkeypatch) -> None:
+def test_database_source_configuration_crud_and_discovery_integration(
+    workspace, monkeypatch
+) -> None:
     client, _factory = workspace
     monkeypatch.setattr(
         "vacancyx.api.routes.discovery.get_settings",
