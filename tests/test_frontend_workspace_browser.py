@@ -116,7 +116,10 @@ def _api_response(route: Any) -> None:
             "generated_at": "2026-01-01T00:00:00Z",
         }
     elif path.startswith("/candidates/candidate-smoke-1/"):
-        if "/resumes" in path or "/answers" in path or "/applications" in path or "/application-batches" in path:
+        if any(
+            part in path
+            for part in ("/resumes", "/answers", "/applications", "/application-batches")
+        ):
             body = {"items": [], "total": 0} if "/applications?" in path else []
         else:
             body = {}
