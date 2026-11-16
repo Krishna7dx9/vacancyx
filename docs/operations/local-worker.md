@@ -29,8 +29,9 @@ The workspace calls \`GET /api/v1/operations/summary\` to show:
 - Enabled and currently due schedules.
 - Discovery tasks grouped by queue state.
 - Running task leases that have already expired.
+- Worker and scheduler process heartbeats, including running, stale, and cleanly stopped states.
 
-This endpoint exposes aggregate counts only; it does not return task payloads, candidate data, or idempotency keys. It deliberately does not claim that the separate worker or scheduler process is alive. A queued task with no progress is a signal to check that the worker terminal is running. An expired lease is recoverable when a worker polls the queue again.
+This endpoint exposes aggregate counts and minimal local process metadata only; it does not return task payloads, candidate data, or idempotency keys. Worker and scheduler processes publish atomic heartbeat files under `.vacancyx/runtime/heartbeats/`. A heartbeat older than 45 seconds is reported as `stale`; a clean Ctrl+C shutdown is reported as `stopped`. A hard crash leaves a stale record until it ages out of operational relevance. Heartbeat files contain only process role, PID, host, instance label, and timestamps; they are not a substitute for OS-level process supervision. A queued task with no progress and no live worker heartbeat is a signal to start the worker. An expired task lease is recoverable when a worker polls the queue again.
 
 ## Recurring discovery schedules
 
