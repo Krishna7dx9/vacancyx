@@ -590,7 +590,7 @@ function ApplicationWorkflow({ candidate, jobs, onCandidateUpdated }: Props) {
                         <div><strong>{resume.original_filename}</strong><span>{(resume.file_size_bytes / 1024).toFixed(0)} KB · {resume.parse_status}</span></div>
                         <span className={resume.parse_status === "reviewed" ? "status-pill status-active" : "status-pill"}>{resume.parse_status}</span>
                       </div>
-                      {resume.parse_status === "uploaded" || resume.parse_status === "failed" ? (
+                      {resume.parse_status === "pending" || resume.parse_status === "uploaded" || resume.parse_status === "failed" ? (
                         <button className="text-button" type="button" onClick={() => void parseResume(resume)} disabled={busy === `parse:${resume.id}`}>
                           {busy === `parse:${resume.id}` ? "Parsing…" : "Parse locally"}
                         </button>
