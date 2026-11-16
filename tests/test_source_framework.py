@@ -135,7 +135,7 @@ def test_read_bounded_response_rejects_declared_and_streamed_oversize() -> None:
         with pytest.raises(SourcePolicyError, match="byte limit"):
             await read_bounded_response(declared, max_bytes=1024)
 
-        streamed = __import__("httpx").Response(200, content=b"x" * 1025)
+        streamed = httpx.Response(200, content=b"x" * 1025)
         with pytest.raises(SourcePolicyError, match="byte limit"):
             await read_bounded_response(streamed, max_bytes=1024)
 
