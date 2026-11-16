@@ -53,7 +53,11 @@ class LeverPostingsAdapter:
         validate_source_url(url, self._config)
         async with httpx.AsyncClient(
             timeout=self._config.timeout_seconds,
-            headers={"User-Agent": self._config.user_agent, "Accept": "application/json"},
+            headers={
+                "User-Agent": self._config.user_agent,
+                "Accept": "application/json",
+                "Accept-Encoding": "identity",
+            },
             follow_redirects=False,
             transport=self._transport,
         ) as client:
