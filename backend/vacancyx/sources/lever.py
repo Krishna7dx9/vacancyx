@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+import json
 from typing import Any
 from urllib.parse import quote
 
@@ -10,7 +11,7 @@ import httpx
 
 from vacancyx.sources.config import SourceConfig
 from vacancyx.sources.contracts import SourceCapabilities, SourceListing, SourcePage
-from vacancyx.sources.policy import validate_source_url
+from vacancyx.sources.policy import read_bounded_response, validate_source_url
 
 
 class LeverPostingsAdapter:
@@ -56,13 +57,18 @@ class LeverPostingsAdapter:
             follow_redirects=False,
             transport=self._transport,
         ) as client:
-            response = await client.get(
+            async with client.stream(
+                "GET",
                 url,
                 params={"mode": "json", "limit": page_size, "skip": skip},
-            )
-            response.raise_for_status()
+            ) as response:
+                response.raise_for_status()
+                body = await read_bounded_response(
+                    response,
+                    max_bytes=self._config.max_response_bytes,
+                )
 
-        payload: Any = response.json()
+        payload: Any = json.loads(body)
         if not isinstance(payload, list):
             raise ValueError("Lever response did not contain a postings list.")
         if len(payload) > page_size:
