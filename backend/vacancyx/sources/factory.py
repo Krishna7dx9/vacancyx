@@ -130,18 +130,23 @@ def build_source_registry(settings: Settings, session: Session | None = None) ->
             page_size=100,
         )
         if item["provider"] == "greenhouse":
-            adapter = GreenhouseJobBoardAdapter(
-                source_key=source_key,
-                board_token=item["external_key"],
-                company_name=item["company_name"],
-                config=config,
+            registry.register(
+                GreenhouseJobBoardAdapter(
+                    source_key=source_key,
+                    board_token=item["external_key"],
+                    company_name=item["company_name"],
+                    config=config,
+                ),
+                config,
             )
         else:
-            adapter = LeverPostingsAdapter(
-                source_key=source_key,
-                site_slug=item["external_key"],
-                company_name=item["company_name"],
-                config=config,
+            registry.register(
+                LeverPostingsAdapter(
+                    source_key=source_key,
+                    site_slug=item["external_key"],
+                    company_name=item["company_name"],
+                    config=config,
+                ),
+                config,
             )
-        registry.register(adapter, config)
     return registry
