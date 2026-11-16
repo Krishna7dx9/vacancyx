@@ -180,3 +180,40 @@ def test_settings_reject_duplicate_public_source_keys() -> None:
                 {"board_token": "acme", "company_name": "Acme Duplicate"},
             ],
         )
+
+
+
+def test_greenhouse_adapter_rejects_oversized_response_body() -> None:
+    adapter = GreenhouseJobBoardAdapter(
+        source_key="greenhouse-acme",
+        board_token="acme",
+        company_name="Acme",
+        config=SourceConfig(
+            source_key="greenhouse-acme",
+            allowed_hosts=("boards-api.greenhouse.io",),
+            max_response_bytes=1024,
+        ),
+        transport=httpx.MockTransport(
+            lambda _request: httpx.Response(200, content=b"x" * 1025)
+        ),
+    )
+    with pytest.raises(SourcePolicyError, match="byte limit"):
+        asyncio.run(adapter.fetch_page(cursor=None, page_size=10))
+
+
+def test_lever_adapter_rejects_oversized_response_body() -> None:
+    adapter = LeverPostingsAdapter(
+        source_key="lever-acme",
+        site_slug="acme",
+        company_name="Acme",
+        config=SourceConfig(
+            source_key="lever-acme",
+            allowed_hosts=("api.lever.co",),
+            max_response_bytes=1024,
+        ),
+        transport=httpx.MockTransport(
+            lambda _request: httpx.Response(200, content=b"x" * 1025)
+        ),
+    )
+    with pytest.raises(SourcePolicyError, match="byte limit"):
+        asyncio.run(adapter.fetch_page(cursor=None, page_size=10))
