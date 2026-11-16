@@ -656,7 +656,8 @@ def test_workspace_uses_live_local_api_for_candidate_and_matching() -> None:
                     page.get_by_role("button", name="Add public source").click()
                     expect(
                         page.get_by_text(
-                            "Synthetic Systems was added. Restart the worker and scheduler to load it."
+                            "Synthetic Systems was added. Restart the worker "
+                            "and scheduler to load it."
                         )
                     ).to_be_visible()
                     expect(
@@ -668,7 +669,8 @@ def test_workspace_uses_live_local_api_for_candidate_and_matching() -> None:
                     page.get_by_role("button", name="Queue selected sources").click()
                     expect(
                         page.get_by_text(
-                            "Queued 1 source refresh task(s). Start the local worker to execute them."
+                            "Queued 1 source refresh task(s). Start the local worker "
+                            "to execute them."
                         )
                     ).to_be_visible()
                     expect(page.get_by_text("queued", exact=True)).to_be_visible()
