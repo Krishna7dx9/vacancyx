@@ -217,9 +217,12 @@ def test_scheduler_requires_bounded_batch_size(workspace) -> None:
 
 
 
-def test_schedule_can_target_database_managed_source(workspace, monkeypatch) -> None:
+def test_schedule_can_target_database_managed_source(
+    workspace, monkeypatch
+) -> None:
     client, _factory = workspace
-    empty_settings = lambda: Settings(_env_file=None)
+    def empty_settings() -> Settings:
+        return Settings(_env_file=None)
     monkeypatch.setattr(
         "vacancyx.api.routes.discovery.get_settings",
         empty_settings,
