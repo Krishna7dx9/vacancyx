@@ -24,6 +24,8 @@ Do not treat a benchmark on GitHub-hosted runners as a capacity guarantee for an
 - [ ] Run vacancyx-demo-seed twice; confirm it is idempotent and the demo job is clearly synthetic.
 - [ ] Start the API bound to 127.0.0.1; verify /health/live and /health/ready.
 - [ ] Start the frontend and confirm the local workspace loads.
+- [ ] Start the scheduler and worker; create a short-interval schedule, confirm a discovery task is queued and completed, then pause the schedule.
+- [ ] Restart the API, scheduler, and worker; confirm the database, task history, and paused schedule state persist.
 - [ ] Confirm the API rejects non-loopback bind addresses. Do not use a tunnel, LAN binding, reverse proxy, or public hosting.
 
 ## Core product walkthrough
@@ -42,6 +44,7 @@ Use only synthetic records for this first walkthrough:
 - [ ] Confirm CAPTCHA, OTP/MFA, legal attestations, unsupported fields, redirects, and interruptions stop for manual handling.
 - [ ] Confirm interrupted/ambiguous browser runs remain uncertain and are never marked submitted automatically.
 - [ ] Record a synthetic confirmation reference manually and inspect the application timeline.
+- [ ] Stop the API, frontend, scheduler, and worker; restart them and confirm local records and task history remain intact.
 
 Never use the synthetic demo vacancy for a real application. Do not test against a real employer portal without the candidate's direct supervision and a genuine, reviewed application.
 
@@ -72,7 +75,7 @@ A successful backup command or integrity check alone is not a completed restore 
 
 ## Release decision
 
-A release may be called a local MVP only when automated evidence is green, the target-computer walkthrough is complete, the restore drill succeeds, and the security/privacy checklist is reviewed. Record the commit SHA, date, machine/OS, test evidence, benchmark report location, backup location, and unresolved limitations.
+A release may be called a local MVP only when automated evidence is green, the target-computer walkthrough is complete, the restore drill succeeds, and the security/privacy checklist is reviewed. Record the commit SHA, date, machine/OS, Python version, Node version, browser version, test evidence, benchmark report location, backup location, and any manual deviations or unresolved limitations.
 
 Known limitations to disclose:
 
