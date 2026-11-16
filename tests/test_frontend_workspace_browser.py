@@ -497,8 +497,8 @@ def test_workspace_uses_live_local_api_for_candidate_and_matching() -> None:
                     page.get_by_text("Add another candidate").click()
                     page.get_by_label("Display name", exact=True).fill("Live API Smoke Candidate")
                     page.get_by_placeholder("Python, SQL, FastAPI").fill("Python, SQL, FastAPI")
-                    page.get_by_placeholder("name@example.com").fill("live-api@example.test")
-                    page.get_by_placeholder("Phone number").fill("0000000000")
+                    page.locator('details.editor input[placeholder="name@example.com"]').fill("live-api@example.test")
+                    page.locator('details.editor input[placeholder="Phone number"]').fill("0000000000")
                     page.get_by_label("Current location").fill("India")
                     page.get_by_role("button", name="Save candidate").click()
                     expect(page.locator(".candidate-summary strong")).to_have_text(
