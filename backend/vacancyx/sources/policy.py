@@ -4,6 +4,8 @@ import asyncio
 import ipaddress
 from collections.abc import Awaitable, Callable
 from typing import TypeVar
+
+import httpx
 from urllib.parse import urlsplit
 
 from vacancyx.sources.config import SourceConfig
@@ -46,6 +48,33 @@ def validate_source_url(url: str, config: SourceConfig) -> str:
     if not allowed:
         raise SourcePolicyError("Source URL host is not in the configured allowlist.")
     return url
+
+
+async def read_bounded_response(
+    response: httpx.Response,
+    *,
+    max_bytes: int,
+) -> bytes:
+    """Read a streamed HTTP response while bounding decompressed bytes in memory."""
+    if max_bytes < 1:
+        raise ValueError("max_bytes must be positive.")
+    content_length = response.headers.get("Content-Length")
+    if content_length is not None:
+        try:
+            declared_length = int(content_length)
+        except ValueError:
+            declared_length = -1
+        if declared_length > max_bytes:
+            raise SourcePolicyError("Source response exceeds the configured byte limit.")
+
+    chunks: list[bytes] = []
+    total = 0
+    async for chunk in response.aiter_bytes():
+        total += len(chunk)
+        if total > max_bytes:
+            raise SourcePolicyError("Source response exceeds the configured byte limit.")
+        chunks.append(chunk)
+    return b"".join(chunks)
 
 
 class AsyncRateLimiter:
