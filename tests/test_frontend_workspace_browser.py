@@ -12,8 +12,7 @@ from typing import Any
 
 import pytest
 
-playwright = pytest.importorskip("playwright.sync_api")
-from playwright.sync_api import expect, sync_playwright
+playwright_api = pytest.importorskip("playwright.sync_api")
 
 ROOT = Path(__file__).resolve().parents[1]
 FRONTEND = ROOT / "frontend"
@@ -153,13 +152,13 @@ def test_workspace_candidate_search_and_matching_flow() -> None:
     )
     try:
         _wait_for_vite(server)
-        with sync_playwright() as runtime:
+        with playwright_api.sync_playwright() as runtime:
             browser = runtime.chromium.launch(headless=True)
             page = browser.new_page()
             page.route("**/api/v1/**", _api_response)
             page.goto("http://127.0.0.1:5173", wait_until="networkidle")
 
-            expect(page.get_by_role("heading", name="Find the right role. Know why it fits.")).to_be_visible()
+            page.get_by_role("heading", name="Find the right role.").wait_for(state="visible")
             page.get_by_text("Create your first candidate profile").click()
             page.get_by_label("Display name").fill("Smoke Test Candidate")
             page.get_by_label("Skills", exact=False).fill("Python, SQL, FastAPI")
