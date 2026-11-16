@@ -1,3 +1,14 @@
+export type OperationsSummary = {
+  database_status: string;
+  configured_source_count: number;
+  enabled_schedule_count: number;
+  due_schedule_count: number;
+  next_schedule_at: string | null;
+  task_counts: Record<string, number>;
+  expired_lease_count: number;
+  generated_at: string;
+};
+
 export type Candidate = {
   id: string;
   display_name: string;
