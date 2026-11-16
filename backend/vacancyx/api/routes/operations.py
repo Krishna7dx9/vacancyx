@@ -23,7 +23,7 @@ def operations_summary(session: SessionDep) -> OperationsSummaryRead:
     """Return bounded aggregate state for the local API, scheduler, and worker queue."""
     now = datetime.now(UTC)
     settings = get_settings()
-    configured_source_count = len(build_source_registry(settings).enabled_source_keys())
+    configured_source_count = len(build_source_registry(settings, session).enabled_source_keys())
 
     task_rows = session.execute(
         select(AutomationTask.state, func.count())
