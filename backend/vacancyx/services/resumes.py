@@ -67,8 +67,15 @@ class ResumeService:
             raise CandidateNotFoundError("Candidate not found.")
 
         safe_filename, extension = self._sanitize_filename(original_filename)
-        resumes_directory = self._storage_root.expanduser().resolve() / "resumes"
+        storage_root = self._storage_root.expanduser().resolve()
+        resumes_directory = storage_root / "resumes"
+        if resumes_directory.is_symlink():
+            raise ResumeUploadError("The private resume storage directory cannot be a symlink.")
         resumes_directory.mkdir(parents=True, exist_ok=True, mode=0o700)
+        if not resumes_directory.resolve().is_relative_to(storage_root):
+            raise ResumeUploadError(
+                "The private resume storage directory is outside local storage."
+            )
         if os.name == "posix":
             # This is a dedicated private subdirectory, not the caller's whole storage root.
             resumes_directory.chmod(0o700)

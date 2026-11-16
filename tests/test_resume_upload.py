@@ -174,3 +174,26 @@ def test_docx_validation_and_path_traversal_rejection(
             file_stream=unsafe_bytes,
             original_filename="unsafe.docx",
         )
+
+
+def test_upload_rejects_symlinked_resume_directory(
+    session: Session, tmp_path: Path
+) -> None:
+    if os.name != "posix":
+        pytest.skip("Symlink creation requires POSIX permissions in this test environment.")
+    candidate_id = create_candidate_id(session)
+    storage_root = tmp_path / "storage"
+    external_directory = tmp_path / "outside"
+    storage_root.mkdir()
+    external_directory.mkdir()
+    (storage_root / "resumes").symlink_to(external_directory, target_is_directory=True)
+
+    service = ResumeService(session, storage_root=storage_root, max_size_bytes=1024)
+    with pytest.raises(ResumeUploadError, match="cannot be a symlink"):
+        service.upload(
+            candidate_id=candidate_id,
+            file_stream=BytesIO(b"%PDF-1.7\\nsynthetic"),
+            original_filename="resume.pdf",
+        )
+
+    assert list(external_directory.iterdir()) == []

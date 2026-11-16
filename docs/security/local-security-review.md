@@ -70,7 +70,7 @@ This is an engineering review of selected high-risk paths, not an external audit
 
 **Verification:** POSIX-only regression tests inspect the resulting database, resume directory/file, and backup modes. These checks are skipped on non-POSIX platforms, where filesystem ACLs must be managed using the operating system's security controls.
 
-**Residual risk:** These mode bits do not encrypt data, protect against the same OS account, or guarantee Windows ACL configuration. Keep the database, resume storage, browser state, and backup paths on a private local account and configure Windows folder permissions where applicable.
+**Additional path control:** Resume uploads reject a symlinked `resumes` directory and verify the resolved destination remains inside the configured storage root, preventing an existing local symlink from redirecting uploaded documents outside private storage. A local attacker with the same OS account can still modify the storage tree concurrently.\n\n**Residual risk:** These mode bits do not encrypt data, protect against the same OS account, or guarantee Windows ACL configuration. Keep the database, resume storage, browser state, and backup paths on a private local account and configure Windows folder permissions where applicable.
 
 ### Backup and recovery
 
