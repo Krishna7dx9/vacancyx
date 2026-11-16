@@ -69,5 +69,6 @@ def operations_summary(session: SessionDep) -> OperationsSummaryRead:
         next_schedule_at=next_schedule_at,
         task_counts=task_counts,
         expired_lease_count=expired_lease_count,
+        processes=read_process_heartbeats(settings.storage_dir),
         generated_at=now,
     )
