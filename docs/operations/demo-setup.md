@@ -92,6 +92,16 @@ npm run build
 
 The dedicated Browser Contract CI workflow installs Chromium and runs a real-browser test against a synthetic in-memory form. No real employer portal is contacted.
 
+## 8. Optional local API benchmark
+
+With the API running on `127.0.0.1`, run:
+
+```bash
+vacancyx-benchmark --requests 500 --warmup 50 --concurrency 10
+```
+
+For the matching endpoint, use the synthetic candidate and search-profile IDs printed by `vacancyx-demo-seed`. The benchmark refuses non-loopback URLs and does not modify records. See [testing and performance](../quality/testing-and-performance.md) for metrics, repeat-trial guidance, and limitations.
+
 ## Removing demo data
 
 The seed command intentionally has no automatic cleanup option because it must not risk deleting candidate data. Delete the synthetic candidate and related demo job through a deliberate local database maintenance operation only after confirming the IDs printed by the seed command.
