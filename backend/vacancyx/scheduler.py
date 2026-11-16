@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
+import socket
 import threading
 from collections.abc import Sequence
 
 from vacancyx.config import get_settings
 from vacancyx.db.session import get_session_factory
+from vacancyx.process_heartbeat import ProcessHeartbeat
 from vacancyx.services.discovery_scheduler import DiscoveryScheduler
 from vacancyx.sources.factory import build_source_registry
 
@@ -55,13 +58,21 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
 
     stop = threading.Event()
+    heartbeat = ProcessHeartbeat(
+        settings.storage_dir,
+        "scheduler",
+        instance_name=f"{socket.gethostname()}:{os.getpid()}",
+    )
     logger.info("Discovery scheduler started")
     try:
+        heartbeat.start()
         while not stop.is_set():
             run_once()
             stop.wait(args.poll_interval)
     except KeyboardInterrupt:
         logger.info("Discovery scheduler shutdown requested")
+    finally:
+        heartbeat.stop()
     return 0
 
 

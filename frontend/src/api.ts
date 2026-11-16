@@ -1,3 +1,15 @@
+export type ProcessHeartbeat = {
+  role: "worker" | "scheduler";
+  instance_id: string;
+  instance_name: string;
+  pid: number;
+  hostname: string;
+  status: "running" | "stopped" | "stale";
+  started_at: string;
+  last_heartbeat_at: string;
+  age_seconds: number;
+};
+
 export type OperationsSummary = {
   database_status: string;
   configured_source_count: number;
@@ -6,6 +18,7 @@ export type OperationsSummary = {
   next_schedule_at: string | null;
   task_counts: Record<string, number>;
   expired_lease_count: number;
+  processes: ProcessHeartbeat[];
   generated_at: string;
 };
 

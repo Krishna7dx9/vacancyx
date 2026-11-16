@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 from vacancyx.config import get_settings
 from vacancyx.db.session import get_session_factory
 from vacancyx.models import AutomationTask
+from vacancyx.process_heartbeat import ProcessHeartbeat
 from vacancyx.repositories import TaskRepository
 from vacancyx.services.discovery import JobDiscoveryService
 from vacancyx.sources.factory import build_source_registry
@@ -460,15 +461,23 @@ def main() -> None:
     if args.once:
         worker.run_once()
         return
+    poll_interval = (
+        args.poll_interval
+        if args.poll_interval is not None
+        else settings.worker_poll_interval_seconds
+    )
+    heartbeat = ProcessHeartbeat(
+        settings.storage_dir,
+        "worker",
+        instance_name=args.worker_id,
+    )
     try:
-        poll_interval = (
-            args.poll_interval
-            if args.poll_interval is not None
-            else settings.worker_poll_interval_seconds
-        )
+        heartbeat.start()
         worker.run_forever(poll_interval_seconds=poll_interval)
     except KeyboardInterrupt:
         logger.info("Worker shutdown requested")
+    finally:
+        heartbeat.stop()
 
 
 if __name__ == "__main__":

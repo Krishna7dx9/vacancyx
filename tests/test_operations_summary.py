@@ -13,9 +13,10 @@ from vacancyx.db.base import Base
 from vacancyx.db.session import get_session
 from vacancyx.main import create_app
 from vacancyx.models import AutomationTask, DiscoverySchedule
+from vacancyx.process_heartbeat import ProcessHeartbeat
 
 
-def test_operations_summary_reports_queue_and_schedule_health(monkeypatch) -> None:
+def test_operations_summary_reports_queue_and_schedule_health(monkeypatch, tmp_path) -> None:
     engine = create_engine(
         "sqlite://",
         connect_args={"check_same_thread": False},
@@ -38,6 +39,7 @@ def test_operations_summary_reports_queue_and_schedule_health(monkeypatch) -> No
         lambda: Settings(
             _env_file=None,
             greenhouse_boards=[{"board_token": "demo", "company_name": "Demo Company"}],
+            storage_dir=tmp_path,
         ),
     )
     now = datetime.now(UTC)
@@ -97,6 +99,11 @@ def test_operations_summary_reports_queue_and_schedule_health(monkeypatch) -> No
             ]
         )
 
+    worker_heartbeat = ProcessHeartbeat(tmp_path, "worker", instance_name="test-worker")
+    scheduler_heartbeat = ProcessHeartbeat(tmp_path, "scheduler", instance_name="test-scheduler")
+    worker_heartbeat.start()
+    scheduler_heartbeat.start()
+
     try:
         with TestClient(app) as client:
             response = client.get("/api/v1/operations/summary")
@@ -108,8 +115,12 @@ def test_operations_summary_reports_queue_and_schedule_health(monkeypatch) -> No
         assert payload["due_schedule_count"] == 1
         assert payload["task_counts"] == {"failed": 1, "queued": 1, "running": 1}
         assert payload["expired_lease_count"] == 1
+        assert {item["role"] for item in payload["processes"]} == {"worker", "scheduler"}
+        assert all(item["status"] == "running" for item in payload["processes"])
         assert "payload" not in payload
         assert "private" not in response.text
     finally:
+        worker_heartbeat.stop()
+        scheduler_heartbeat.stop()
         app.dependency_overrides.clear()
         engine.dispose()
