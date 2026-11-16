@@ -661,6 +661,7 @@ def test_workspace_uses_live_local_api_for_candidate_and_matching() -> None:
                     page.get_by_label("Employment").fill("Full-time")
                     page.get_by_role("button", name="Save search profile").click()
                     expect(page.get_by_text("Search profile saved.")).to_be_visible()
+                    expect(page.get_by_text("No indexed jobs yet.")).to_be_visible()
 
                     # Configure a real public-board source and durable recurring schedule.
                     page.get_by_label("Provider").select_option("greenhouse")
@@ -677,6 +678,15 @@ def test_workspace_uses_live_local_api_for_candidate_and_matching() -> None:
                         page.locator(".source-config-item").get_by_text(
                             "greenhouse · greenhouse-synthetic-board"
                         )
+                    ).to_be_visible()
+
+                    # Dismissing the destructive confirmation must preserve the source.
+                    page.once("dialog", lambda dialog: dialog.dismiss())
+                    page.locator(".source-config-item").get_by_role(
+                        "button", name="Delete"
+                    ).click()
+                    expect(
+                        page.locator(".source-config-item").get_by_text("Synthetic Systems")
                     ).to_be_visible()
 
                     page.get_by_role("button", name="Queue selected sources").click()
