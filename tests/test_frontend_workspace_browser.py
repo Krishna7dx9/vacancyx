@@ -119,19 +119,69 @@ def _api_response(route: Any) -> None:
             "limit": 50,
             "offset": 0,
         }
-    elif path == "/discovery/sources":
-        body = {"items": []}
-    elif path == "/discovery/source-configs":
-        body = []
-    elif path == "/discovery/tasks?limit=30":
-        body = {"items": [], "limit": 30, "offset": 0}
-    elif path == "/discovery/schedules":
-        body = {"items": [], "total": 0}
+    elif path == "/discovery/sources" and method == "GET":
+        body = {"items": STATE.get("sources", [])}
+    elif path == "/discovery/source-configs" and method == "GET":
+        body = STATE.get("source_configs", [])
+    elif path == "/discovery/source-configs" and method == "POST":
+        source = {
+            "source_key": "greenhouse-" + payload["external_key"].lower(),
+            "provider": payload["provider"],
+            "company_name": payload["company_name"],
+            "is_enabled": True,
+            "managed_by": "database",
+        }
+        STATE["source_configs"] = [source]
+        STATE["sources"] = [{
+            "source_key": source["source_key"],
+            "provider": source["provider"],
+            "company_name": source["company_name"],
+        }]
+        body = source
+    elif path == "/discovery/tasks?limit=30" and method == "GET":
+        body = {"items": STATE.get("tasks", []), "limit": 30, "offset": 0}
+    elif path == "/discovery/tasks" and method == "POST":
+        task = {
+            "id": "task-smoke-1",
+            "source_key": "greenhouse-acme",
+            "task_type": "source_discovery",
+            "state": "queued",
+            "attempts": 0,
+            "max_attempts": 3,
+            "available_at": "2026-01-01T00:00:00Z",
+            "lease_expires_at": None,
+            "last_error_code": None,
+            "last_error_message": None,
+            "result": None,
+            "created_at": "2026-01-01T00:00:00Z",
+            "updated_at": "2026-01-01T00:00:00Z",
+        }
+        STATE["tasks"] = [task]
+        body = {"items": [task]}
+    elif path == "/discovery/schedules" and method == "GET":
+        schedules = STATE.get("schedules", [])
+        body = {"items": schedules, "total": len(schedules)}
+    elif path == "/discovery/schedules" and method == "POST":
+        schedule = {
+            "id": "schedule-smoke-1",
+            "name": payload["name"],
+            "source_keys": payload["source_keys"],
+            "interval_seconds": payload["interval_seconds"],
+            "is_enabled": True,
+            "next_run_at": "2026-01-01T00:00:00Z",
+            "last_run_at": None,
+            "run_number": 0,
+            "last_error_code": None,
+            "created_at": "2026-01-01T00:00:00Z",
+            "updated_at": "2026-01-01T00:00:00Z",
+        }
+        STATE["schedules"] = [schedule]
+        body = schedule
     elif path == "/operations/summary":
         body = {
             "database_status": "ok",
-            "configured_source_count": 0,
-            "enabled_schedule_count": 0,
+            "configured_source_count": len(STATE.get("source_configs", [])),
+            "enabled_schedule_count": len(STATE.get("schedules", [])),
             "due_schedule_count": 0,
             "next_schedule_at": None,
             "task_counts": {},
@@ -370,7 +420,10 @@ def _job() -> dict[str, Any]:
 
 def test_workspace_candidate_search_and_matching_flow() -> None:
     STATE.clear()
-    STATE.update({"answers": [], "applications": [], "batches": [], "events": [], "resumes": []})
+    STATE.update({
+        "answers": [], "applications": [], "batches": [], "events": [], "resumes": [],
+        "sources": [], "source_configs": [], "tasks": [], "schedules": [],
+    })
     server = subprocess.Popen(
         ["npm", "run", "dev", "--", "--host", "127.0.0.1", "--port", "5173", "--strictPort"],
         cwd=FRONTEND,
@@ -403,6 +456,35 @@ def test_workspace_candidate_search_and_matching_flow() -> None:
             page.get_by_label("Currency").fill("INR")
             page.get_by_role("button", name="Save search profile").click()
             expect(page.get_by_text("Search profile saved.")).to_be_visible()
+
+            page.get_by_label("Provider").select_option("greenhouse")
+            page.get_by_label("Greenhouse board token").fill("acme")
+            page.get_by_label("Company display name").fill("Acme Systems")
+            page.get_by_role("button", name="Add public source").click()
+            expect(
+                page.get_by_text(
+                    "Acme Systems was added. Restart the worker and scheduler to load it."
+                )
+            ).to_be_visible()
+            expect(page.get_by_text("greenhouse · greenhouse-acme")).to_be_visible()
+
+            page.get_by_role("button", name="Queue selected sources").click()
+            expect(
+                page.get_by_text(
+                    "Queued 1 source refresh task(s). Start the local worker to execute them."
+                )
+            ).to_be_visible()
+            expect(page.get_by_text("task-smoke-1")).to_be_visible()
+
+            page.get_by_label("Schedule name").fill("Smoke daily refresh")
+            page.get_by_label("Run frequency").select_option("86400")
+            page.get_by_role("button", name="Save recurring schedule").click()
+            expect(
+                page.get_by_text(
+                    "Schedule saved. Its first discovery run is due immediately when the local scheduler is running."
+                )
+            ).to_be_visible()
+            expect(page.get_by_text("Smoke daily refresh")).to_be_visible()
 
             page.get_by_label("Role, company or keyword").fill("Backend Engineer")
             page.get_by_role("button", name="Search jobs").click()
