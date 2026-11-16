@@ -164,7 +164,7 @@ def test_workspace_candidate_search_and_matching_flow() -> None:
 
             page.get_by_role("heading", name="Find the right role.").wait_for(state="visible")
             page.get_by_text("Create your first candidate profile").click()
-            page.get_by_label("Display name").fill("Smoke Test Candidate")
+            page.get_by_label("Display name", exact=True).fill("Smoke Test Candidate")
             page.get_by_placeholder("Python, SQL, FastAPI").fill("Python, SQL, FastAPI")
             page.get_by_label("Current location").fill("India")
             page.get_by_role("button", name="Save candidate").click()
