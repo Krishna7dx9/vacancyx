@@ -58,6 +58,52 @@ jobs:
           vacancyx-demo-seed
           vacancyx-demo-seed
 
+      - name: Create and verify a real SQLite online backup
+        run: |
+          vacancyx-backup create --destination /tmp/vacancyx-release-backup.sqlite3
+          vacancyx-backup verify /tmp/vacancyx-release-backup.sqlite3
+
+      - name: Restore the backup into a disposable database and verify records
+        run: |
+          cp /tmp/vacancyx-release-backup.sqlite3 /tmp/vacancyx-release-restored.sqlite3
+          VACANCYX_DATABASE_URL=sqlite:////tmp/vacancyx-release-restored.sqlite3 alembic upgrade head
+          VACANCYX_DATABASE_URL=sqlite:////tmp/vacancyx-release-restored.sqlite3 python - <<'PY'
+          from sqlalchemy import select
+          from sqlalchemy.orm import Session
+          from fastapi.testclient import TestClient
+
+          from vacancyx.db.session import get_engine
+          from vacancyx.main import create_app
+          from vacancyx.models import CandidateProfile, Job, SearchProfile
+
+          with TestClient(create_app()) as client:
+              response = client.get("/health/ready")
+              assert response.status_code == 200, response.text
+
+          with Session(get_engine()) as session:
+              candidate = session.scalar(
+                  select(CandidateProfile).where(
+                      CandidateProfile.email == "demo@vacancyx.invalid"
+                  )
+              )
+              assert candidate is not None
+              assert candidate.display_name == "VacancyX Demo Candidate"
+              job = session.scalar(
+                  select(Job).where(
+                      Job.canonical_url == "https://jobs.example.test/demo-backend-engineer"
+                  )
+              )
+              assert job is not None
+              profile = session.scalar(
+                  select(SearchProfile).where(
+                      SearchProfile.candidate_id == candidate.id,
+                      SearchProfile.name == "Demo backend roles in India",
+                  )
+              )
+              assert profile is not None
+          print("Backup restore verified: readiness, candidate, job, and search profile.")
+          PY
+
       - name: Verify API liveness, database readiness, and OpenAPI
         run: |
           python - <<'PY'
