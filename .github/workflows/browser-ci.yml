@@ -16,6 +16,8 @@ on:
       - "backend/vacancyx/services/browser_*.py"
       - "backend/vacancyx/services/browser_assist.py"
       - "tests/test_browser_assist*.py"
+      - "tests/test_frontend_workspace_browser.py"
+      - "frontend/**"
       - "pyproject.toml"
       - ".github/workflows/browser-ci.yml"
   workflow_dispatch:
