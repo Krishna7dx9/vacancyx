@@ -68,7 +68,10 @@ def _source_specs(settings: Settings, session: Session | None) -> list[_SourceSp
                 "is_enabled": row.is_enabled,
                 "managed_by": "database",
             }
-    return sorted(specs.values(), key=lambda item: (item["provider"], item["company_name"].casefold()))
+    return sorted(
+        specs.values(),
+        key=lambda item: (item["provider"], item["company_name"].casefold()),
+    )
 
 
 def configured_source_configurations(
