@@ -11,6 +11,7 @@ from vacancyx.api.schemas.operations import OperationsSummaryRead
 from vacancyx.config import get_settings
 from vacancyx.db.session import get_session
 from vacancyx.models import AutomationTask, DiscoverySchedule
+from vacancyx.process_heartbeat import read_process_heartbeats
 from vacancyx.sources.factory import build_source_registry
 
 router = APIRouter(prefix="/operations", tags=["operations"])
