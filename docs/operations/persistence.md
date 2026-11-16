@@ -28,7 +28,7 @@ backup_sqlite_database(get_engine(), Path.home() / "VacancyXBackups" / "latest.s
 
 The utility uses SQLite's backup API (so committed WAL content is included), checks the backup with `PRAGMA integrity_check`, writes to a temporary file beside the destination, and atomically replaces the destination only after validation. It rejects in-memory databases, non-SQLite engines and a destination equal to the source. The destination should be outside the repository and protected by local filesystem permissions.
 
-A backup is not proven until restoration is tested. Restore to a separate disposable database, run `alembic upgrade head` if needed, and verify the expected tables and records. Do not copy candidate data into issue reports or CI artifacts.
+A backup is not proven until restoration is tested. For a recovery drill, stop the API, worker, and scheduler; copy the backup to a separate disposable database path; point `VACANCYX_DATABASE_URL` at that copy; run `alembic upgrade head` if needed; start the API; check `/health/ready`; and verify expected records through the local UI. Never overwrite the active database during a drill. Keep the original backup unchanged. Do not copy candidate data into issue reports or CI artifacts.
 
 ## Migration policy
 Never edit an already released migration. Add a new revision for every schema change, review generated DDL, and test both upgrade and downgrade on a disposable database. Back up user data before applying migrations to a real local installation. SQLite table rebuilds require special care for constraints and indexes.
