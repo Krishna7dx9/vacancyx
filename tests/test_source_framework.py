@@ -1,7 +1,9 @@
 """Contract and policy tests for the pluggable job-source framework."""
 
 import asyncio
+from collections.abc import AsyncIterator
 
+import httpx
 import pytest
 
 from vacancyx.sources.config import SourceConfig
@@ -10,6 +12,7 @@ from vacancyx.sources.policy import (
     AsyncRateLimiter,
     SourceExecutionGate,
     SourcePolicyError,
+    read_bounded_response,
     validate_source_url,
 )
 from vacancyx.sources.registry import SourceRegistry
@@ -118,3 +121,31 @@ def test_source_config_rejects_unbounded_limits_and_bad_hosts() -> None:
         _config(requests_per_minute=500)
     with pytest.raises(ValueError):
         _config(allowed_hosts=("https://example.test",))
+    with pytest.raises(ValueError):
+        _config(max_response_bytes=21 * 1024 * 1024)
+
+
+
+def test_read_bounded_response_rejects_declared_and_streamed_oversize() -> None:
+    class ChunkedStream(httpx.AsyncByteStream):
+        async def __aiter__(self) -> AsyncIterator[bytes]:
+            yield b"x" * 600
+            yield b"x" * 600
+
+        async def aclose(self) -> None:
+            return None
+
+    async def scenario() -> None:
+        declared = httpx.Response(
+            200,
+            headers={"Content-Length": "2048"},
+            content=b"x",
+        )
+        with pytest.raises(SourcePolicyError, match="byte limit"):
+            await read_bounded_response(declared, max_bytes=1024)
+
+        streamed = httpx.Response(200, stream=ChunkedStream())
+        with pytest.raises(SourcePolicyError, match="byte limit"):
+            await read_bounded_response(streamed, max_bytes=1024)
+
+    asyncio.run(scenario())
