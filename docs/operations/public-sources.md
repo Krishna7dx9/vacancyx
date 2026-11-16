@@ -67,7 +67,8 @@ The workspace's operations summary reports database readiness, configured source
 
 ## Current limits
 
-- Source configuration is local environment configuration; there is not yet a source-management form in the UI.
+- Database-managed source configuration is available through the local API; the source-management form in the UI is still pending.
+- Environment-managed sources remain read-only in the API and must be changed in `.env`.
 - Only public Greenhouse and Lever APIs are supported today. Workday, SmartRecruiters, Ashby, iCIMS, and direct HTML sites are not implemented.
 - No default company list is shipped. Add only verified official public board tokens/slugs.
 - Task status refresh is user-triggered; the workspace does not poll continuously.
