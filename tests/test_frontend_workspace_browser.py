@@ -750,7 +750,7 @@ def test_workspace_uses_live_local_api_for_candidate_and_matching() -> None:
                     page.get_by_role(
                         "button", name="Create batch from 1 selected"
                     ).click()
-                    page.locator(".batch-review-item input[type='checkbox']").last.check()
+                    page.locator(".batch-review-item input[type='checkbox']:not(:disabled)").first.check()
                     page.get_by_role("button", name="Approve selected").last.click()
                     expect(
                         page.locator(
