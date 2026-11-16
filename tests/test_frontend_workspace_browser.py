@@ -190,13 +190,22 @@ def _api_response(route: Any) -> None:
             "batch": batch,
             "results": [{"application_id": application["id"], "result": "approved"}],
         }
-    elif path == "/candidates/candidate-smoke-1/applications/application-smoke-1/status" and method == "PATCH":
+    elif (
+        path == "/candidates/candidate-smoke-1/applications/application-smoke-1/status"
+        and method == "PATCH"
+    ):
         application = STATE["applications"][0]
         application["status"] = payload["status"]
         body = {"id": application["id"], "status": payload["status"], "submitted_at": None}
-    elif path == "/candidates/candidate-smoke-1/applications/application-smoke-1/events" and method == "GET":
+    elif (
+        path == "/candidates/candidate-smoke-1/applications/application-smoke-1/events"
+        and method == "GET"
+    ):
         body = STATE.get("events", [])
-    elif path == "/candidates/candidate-smoke-1/applications/application-smoke-1/events" and method == "POST":
+    elif (
+        path == "/candidates/candidate-smoke-1/applications/application-smoke-1/events"
+        and method == "POST"
+    ):
         event = {
             "id": "event-smoke-1",
             "event_type": payload["event_type"],
@@ -367,7 +376,9 @@ def test_workspace_candidate_search_and_matching_flow() -> None:
             page.get_by_label("Question").fill("Why backend engineering?")
             page.get_by_label("Answer").fill("I build Python APIs and data workflows.")
             page.get_by_role("button", name="Save reusable answer").click()
-            expect(page.get_by_text("Reusable answer saved and selected for the application draft.")).to_be_visible()
+            expect(
+                page.get_by_text("Reusable answer saved and selected for the application draft.")
+            ).to_be_visible()
 
             page.get_by_label("Open job").select_option("job-smoke-1")
             page.get_by_label("Additional application note").fill("Synthetic review note.")
