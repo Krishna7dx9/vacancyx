@@ -300,6 +300,11 @@ export type DiscoverySource = {
   provider: string;
 };
 
+export type PublicJobSourceConfig = DiscoverySource & {
+  is_enabled: boolean;
+  managed_by: "environment" | "database";
+};
+
 export type DiscoveryTaskResult = {
   source_key?: string;
   status?: string;
