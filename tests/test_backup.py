@@ -106,3 +106,24 @@ def test_verify_backup_rejects_missing_and_invalid_files(tmp_path) -> None:
     invalid.write_text("not a sqlite database", encoding="utf-8")
     with pytest.raises(sqlite3.DatabaseError):
         verify_sqlite_backup(invalid)
+
+
+
+def test_backup_cli_creates_and_verifies_backup(tmp_path, monkeypatch, capsys) -> None:
+    from vacancyx import backup_cli
+
+    source = build_engine(f"sqlite:///{tmp_path / 'runtime.sqlite3'}")
+    Base.metadata.create_all(source)
+    monkeypatch.setattr(backup_cli, "get_engine", lambda: source)
+    backup = tmp_path / "backups" / "cli.sqlite3"
+
+    assert backup_cli.main(["create", "--destination", str(backup)]) == 0
+    created = capsys.readouterr().out
+    assert '"operation": "backup_created"' in created
+    assert backup.is_file()
+
+    assert backup_cli.main(["verify", str(backup)]) == 0
+    verified = capsys.readouterr().out
+    assert '"operation": "backup_verified"' in verified
+    assert '"integrity": "ok"' in verified
+    source.dispose()
