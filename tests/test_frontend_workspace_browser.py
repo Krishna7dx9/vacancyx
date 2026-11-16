@@ -17,6 +17,7 @@ expect = playwright_api.expect
 
 ROOT = Path(__file__).resolve().parents[1]
 FRONTEND = ROOT / "frontend"
+STATE: dict[str, Any] = {}
 
 
 def _wait_for_vite(process: subprocess.Popen[str]) -> None:
@@ -51,6 +52,7 @@ def _api_response(route: Any) -> None:
             "skills": payload.get("skills", []),
             "is_active": True,
         }
+        STATE["candidate"] = body
     elif path == "/candidates/candidate-smoke-1/search-profiles" and method == "GET":
         body = []
     elif path == "/candidates/candidate-smoke-1/search-profiles" and method == "POST":
@@ -115,17 +117,190 @@ def _api_response(route: Any) -> None:
             "processes": [],
             "generated_at": "2026-01-01T00:00:00Z",
         }
+    elif path == "/candidates/candidate-smoke-1/resumes":
+        body = [_resume()]
+    elif path == "/resumes/resume-smoke-1/parse":
+        body = _resume_parse()
+    elif path == "/candidates/candidate-smoke-1/answers" and method == "GET":
+        body = STATE.get("answers", [])
+    elif path == "/candidates/candidate-smoke-1/answers" and method == "POST":
+        answer = {
+            "id": "answer-smoke-1",
+            "candidate_id": "candidate-smoke-1",
+            "question": payload["question"],
+            "answer_text": payload["answer_text"],
+            "category": payload.get("category"),
+            "tags": [],
+            "source": "candidate",
+            "current_revision": 1,
+            "is_active": True,
+            "created_at": "2026-01-01T00:00:00Z",
+            "updated_at": "2026-01-01T00:00:00Z",
+        }
+        STATE["answers"] = [answer]
+        body = answer
+    elif path == "/candidates/candidate-smoke-1/applications?limit=100" and method == "GET":
+        applications = STATE.get("applications", [])
+        body = {"items": applications, "total": len(applications)}
+    elif path == "/candidates/candidate-smoke-1/applications" and method == "POST":
+        application = _application(payload)
+        STATE["applications"] = [application]
+        body = application
+    elif path == "/candidates/candidate-smoke-1/application-batches" and method == "GET":
+        body = STATE.get("batches", [])
+    elif path == "/candidates/candidate-smoke-1/application-batches" and method == "POST":
+        application = STATE["applications"][0]
+        snapshot = application["latest_revision"]["content_snapshot"]
+        item = {
+            "id": "batch-item-smoke-1",
+            "application_id": application["id"],
+            "revision": 1,
+            "content_hash": application["latest_revision"]["content_hash"],
+            "decision": "pending",
+            "decided_at": None,
+            "current_revision": 1,
+            "current_content_hash": application["latest_revision"]["content_hash"],
+            "is_stale": False,
+            "company_name": "Synthetic Systems",
+            "job_title": "Backend Engineer",
+            "readiness_status": "ready_for_review",
+            "missing_fields": [],
+            "content_snapshot": snapshot,
+        }
+        batch = {
+            "id": "batch-smoke-1",
+            "candidate_id": "candidate-smoke-1",
+            "name": payload["name"],
+            "status": "reviewing",
+            "created_at": "2026-01-01T00:00:00Z",
+            "updated_at": "2026-01-01T00:00:00Z",
+            "items": [item],
+            "total_items": 1,
+        }
+        STATE["batches"] = [batch]
+        body = batch
+    elif path == "/candidates/candidate-smoke-1/application-batches/batch-smoke-1/decisions":
+        batch = STATE["batches"][0]
+        batch["status"] = "completed"
+        batch["items"][0]["decision"] = "approved"
+        batch["items"][0]["decided_at"] = "2026-01-01T00:00:00Z"
+        application = STATE["applications"][0]
+        application["status"] = "approved"
+        body = {
+            "batch": batch,
+            "results": [{"application_id": application["id"], "result": "approved"}],
+        }
+    elif path == "/candidates/candidate-smoke-1/applications/application-smoke-1/status" and method == "PATCH":
+        application = STATE["applications"][0]
+        application["status"] = payload["status"]
+        body = {"id": application["id"], "status": payload["status"], "submitted_at": None}
+    elif path == "/candidates/candidate-smoke-1/applications/application-smoke-1/events" and method == "GET":
+        body = STATE.get("events", [])
+    elif path == "/candidates/candidate-smoke-1/applications/application-smoke-1/events" and method == "POST":
+        event = {
+            "id": "event-smoke-1",
+            "event_type": payload["event_type"],
+            "occurred_at": "2026-01-01T00:00:00Z",
+            "metadata_json": {"summary": payload["summary"]},
+        }
+        STATE["events"] = [event]
+        body = event
     elif path.startswith("/candidates/candidate-smoke-1/"):
-        if any(
-            part in path
-            for part in ("/resumes", "/answers", "/applications", "/application-batches")
-        ):
-            body = {"items": [], "total": 0} if "/applications?" in path else []
-        else:
-            body = {}
+        body = {}
     else:
         body = {}
     route.fulfill(status=200, content_type="application/json", body=json.dumps(body))
+
+
+
+def _resume() -> dict[str, Any]:
+    return {
+        "id": "resume-smoke-1",
+        "candidate_id": "candidate-smoke-1",
+        "original_filename": "synthetic-resume.txt",
+        "media_type": "text/plain",
+        "file_size_bytes": 1000,
+        "checksum_sha256": "b" * 64,
+        "parse_status": "reviewed",
+        "created_at": "2026-01-01T00:00:00Z",
+        "updated_at": "2026-01-01T00:00:00Z",
+    }
+
+
+def _resume_parse() -> dict[str, Any]:
+    candidate = STATE.get("candidate", {})
+    return {
+        "id": "resume-smoke-1",
+        "parse_status": "reviewed",
+        "parsed_content": {
+            "reviewed_fields": {
+                "display_name": candidate.get("display_name", "Smoke Test Candidate"),
+                "email": candidate.get("email"),
+                "phone": candidate.get("phone"),
+                "location": candidate.get("location"),
+                "skills": candidate.get("skills", []),
+            },
+            "warnings": [],
+        },
+    }
+
+
+def _application(payload: dict[str, Any]) -> dict[str, Any]:
+    candidate = STATE["candidate"]
+    answers = [
+        answer for answer in STATE.get("answers", [])
+        if answer["id"] in payload.get("answer_ids", [])
+    ]
+    snapshot = {
+        "candidate": {
+            "display_name": candidate["display_name"],
+            "email": candidate["email"],
+            "phone": candidate["phone"],
+            "location": candidate["location"],
+            "skills": candidate["skills"],
+        },
+        "job": _job(),
+        "resume": {
+            "id": "resume-smoke-1",
+            "filename": "synthetic-resume.txt",
+            "checksum_sha256": "b" * 64,
+            "parse_status": "reviewed",
+        },
+        "answers": [{
+            "id": answer["id"],
+            "question": answer["question"],
+            "answer": answer["answer_text"],
+            "category": answer["category"],
+            "tags": answer["tags"],
+            "revision": 1,
+            "content_hash": "c" * 64,
+        } for answer in answers],
+        "custom_fields": payload.get("custom_fields", {}),
+        "readiness": {
+            "status": "ready_for_review",
+            "missing_fields": [],
+            "selected_answer_count": len(answers),
+        },
+    }
+    return {
+        "id": "application-smoke-1",
+        "candidate_id": "candidate-smoke-1",
+        "job_id": "job-smoke-1",
+        "resume_id": "resume-smoke-1",
+        "status": "prepared",
+        "current_revision": 1,
+        "submitted_at": None,
+        "created_at": "2026-01-01T00:00:00Z",
+        "updated_at": "2026-01-01T00:00:00Z",
+        "latest_revision": {
+            "id": "revision-smoke-1",
+            "revision": 1,
+            "content_hash": "a" * 64,
+            "content_snapshot": snapshot,
+            "resume_id": "resume-smoke-1",
+            "created_at": "2026-01-01T00:00:00Z",
+        },
+    }
 
 
 def _job() -> dict[str, Any]:
@@ -147,6 +322,8 @@ def _job() -> dict[str, Any]:
 
 
 def test_workspace_candidate_search_and_matching_flow() -> None:
+    STATE.clear()
+    STATE.update({"answers": [], "applications": [], "batches": [], "events": []})
     server = subprocess.Popen(
         ["npm", "run", "dev", "--", "--host", "127.0.0.1", "--port", "5173", "--strictPort"],
         cwd=FRONTEND,
@@ -166,6 +343,8 @@ def test_workspace_candidate_search_and_matching_flow() -> None:
             page.get_by_text("Create your first candidate profile").click()
             page.get_by_label("Display name", exact=True).fill("Smoke Test Candidate")
             page.get_by_placeholder("Python, SQL, FastAPI").fill("Python, SQL, FastAPI")
+            page.get_by_label("Email", exact=True).fill("candidate@example.test")
+            page.get_by_label("Phone", exact=True).fill("+910000000000")
             page.get_by_label("Current location").fill("India")
             page.get_by_role("button", name="Save candidate").click()
             expect(page.locator(".candidate-summary strong")).to_have_text("Smoke Test Candidate")
@@ -184,6 +363,29 @@ def test_workspace_candidate_search_and_matching_flow() -> None:
             page.get_by_role("button", name="Evaluate my matches").click()
             expect(page.get_by_text("91.5", exact=True)).to_be_visible()
             expect(page.get_by_text("eligible", exact=True)).to_be_visible()
+
+            page.get_by_label("Question").fill("Why backend engineering?")
+            page.get_by_label("Answer").fill("I build Python APIs and data workflows.")
+            page.get_by_role("button", name="Save reusable answer").click()
+            expect(page.get_by_text("Reusable answer saved and selected for the application draft.")).to_be_visible()
+
+            page.get_by_label("Open job").select_option("job-smoke-1")
+            page.get_by_label("Additional application note").fill("Synthetic review note.")
+            page.get_by_role("button", name="Prepare application draft").click()
+            expect(page.locator(".application-item .status-pill")).to_have_text("prepared")
+
+            page.get_by_label("Add this draft to a review batch").check()
+            page.get_by_role("button", name="Create batch from 1 selected").click()
+            page.locator(".batch-review-item input[type='checkbox']").check()
+            page.get_by_role("button", name="Approve selected").click()
+            expect(page.locator(".application-item .status-pill")).to_have_text("approved")
+
+            page.get_by_role("button", name="Mark submission started").click()
+            expect(page.locator(".tracking-item .status-pill")).to_have_text("submitting")
+            page.get_by_role("button", name="Show timeline").click()
+            page.get_by_label("Timeline note").fill("Interview scheduled for next week.")
+            page.get_by_role("button", name="Add timeline event").click()
+            expect(page.get_by_text("Interview scheduled for next week.")).to_be_visible()
             browser.close()
     finally:
         server.terminate()
