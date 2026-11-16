@@ -1,4 +1,5 @@
 
+import sqlite3
 from unittest.mock import Mock
 
 import pytest
@@ -103,5 +104,5 @@ def test_verify_backup_rejects_missing_and_invalid_files(tmp_path) -> None:
 
     invalid = tmp_path / "invalid.sqlite3"
     invalid.write_text("not a sqlite database", encoding="utf-8")
-    with pytest.raises(Exception):
+    with pytest.raises(sqlite3.DatabaseError):
         verify_sqlite_backup(invalid)
