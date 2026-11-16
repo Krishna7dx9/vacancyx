@@ -126,6 +126,14 @@ def test_source_config_rejects_unbounded_limits_and_bad_hosts() -> None:
 
 
 def test_read_bounded_response_rejects_declared_and_streamed_oversize() -> None:
+    class ChunkedStream(httpx.AsyncByteStream):
+        async def __aiter__(self):
+            yield b"x" * 600
+            yield b"x" * 600
+
+        async def aclose(self) -> None:
+            return None
+
     async def scenario() -> None:
         declared = httpx.Response(
             200,
@@ -135,7 +143,7 @@ def test_read_bounded_response_rejects_declared_and_streamed_oversize() -> None:
         with pytest.raises(SourcePolicyError, match="byte limit"):
             await read_bounded_response(declared, max_bytes=1024)
 
-        streamed = httpx.Response(200, content=b"x" * 1025)
+        streamed = httpx.Response(200, stream=ChunkedStream())
         with pytest.raises(SourcePolicyError, match="byte limit"):
             await read_bounded_response(streamed, max_bytes=1024)
 
