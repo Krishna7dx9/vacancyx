@@ -2,6 +2,7 @@
 
 import asyncio
 
+import httpx
 import pytest
 
 from vacancyx.sources.config import SourceConfig
@@ -124,7 +125,7 @@ def test_source_config_rejects_unbounded_limits_and_bad_hosts() -> None:
 
 def test_read_bounded_response_rejects_declared_and_streamed_oversize() -> None:
     async def scenario() -> None:
-        declared = __import__("httpx").Response(
+        declared = httpx.Response(
             200,
             headers={"Content-Length": "2048"},
             content=b"x",
