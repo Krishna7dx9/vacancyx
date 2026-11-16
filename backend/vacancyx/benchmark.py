@@ -96,7 +96,8 @@ async def _request(
         response = await client.request(method, path)
         elapsed_ms = (time.perf_counter() - started) * 1000
         error_type = "HTTPStatusError" if response.status_code >= 400 else None
-        return RequestSample(path.split("?", maxsplit=1)[0], elapsed_ms, response.status_code, error_type)
+        endpoint = path.split("?", maxsplit=1)[0]
+        return RequestSample(endpoint, elapsed_ms, response.status_code, error_type)
     except httpx.HTTPError as exc:
         elapsed_ms = (time.perf_counter() - started) * 1000
         return RequestSample(path.split("?", maxsplit=1)[0], elapsed_ms, None, type(exc).__name__)
@@ -232,8 +233,8 @@ def main(argv: list[str] | None = None) -> int:
         base_url = validate_loopback_url(args.api_url)
     except ValueError as exc:
         parser.error(str(exc))
-    if args.requests < 1 or args.requests > 100_000:
-        parser.error("--requests must be between 1 and 100000.")
+    if args.requests < 1 or args.requests > 10_000:
+        parser.error("--requests must be between 1 and 10000.")
     if args.warmup < 0 or args.warmup > 10_000:
         parser.error("--warmup must be between 0 and 10000.")
     if args.concurrency < 1 or args.concurrency > 2_000:
