@@ -1,7 +1,7 @@
 
 import os
-import stat
 import sqlite3
+import stat
 from unittest.mock import Mock
 
 import pytest
