@@ -474,7 +474,7 @@ def test_workspace_candidate_search_and_matching_flow() -> None:
                     "Queued 1 source refresh task(s). Start the local worker to execute them."
                 )
             ).to_be_visible()
-            expect(page.get_by_text("task-smoke-1")).to_be_visible()
+            expect(page.get_by_text("queued", exact=True)).to_be_visible()
 
             page.get_by_label("Schedule name").fill("Smoke daily refresh")
             page.get_by_label("Run frequency").select_option("86400")
