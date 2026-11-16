@@ -9,6 +9,7 @@ import {
   type DiscoveryTask,
   type DiscoveryTaskEnqueueResponse,
   type DiscoveryTaskListResponse,
+  type OperationsSummary,
 } from "./api";
 
 type Props = {
@@ -27,6 +28,7 @@ function DiscoveryPanel({ onJobsRefresh }: Props) {
   const [sources, setSources] = useState<DiscoverySource[]>([]);
   const [tasks, setTasks] = useState<DiscoveryTask[]>([]);
   const [schedules, setSchedules] = useState<DiscoverySchedule[]>([]);
+  const [operations, setOperations] = useState<OperationsSummary | null>(null);
   const [selectedSourceKeys, setSelectedSourceKeys] = useState<string[]>([]);
   const [sourceSelectionInitialized, setSourceSelectionInitialized] = useState(false);
   const [scheduleName, setScheduleName] = useState("Daily public job refresh");
@@ -39,14 +41,16 @@ function DiscoveryPanel({ onJobsRefresh }: Props) {
     setBusy("refresh");
     setError("");
     try {
-      const [sourceResponse, taskResponse, scheduleResponse] = await Promise.all([
+      const [sourceResponse, taskResponse, scheduleResponse, operationsResponse] = await Promise.all([
         apiRequest<{ items: DiscoverySource[] }>("/discovery/sources"),
         apiRequest<DiscoveryTaskListResponse>("/discovery/tasks?limit=30"),
         apiRequest<DiscoveryScheduleList>("/discovery/schedules"),
+        apiRequest<OperationsSummary>("/operations/summary"),
       ]);
       setSources(sourceResponse.items);
       setTasks(taskResponse.items);
       setSchedules(scheduleResponse.items);
+      setOperations(operationsResponse);
       setSelectedSourceKeys((current) => {
         const available = sourceResponse.items.map((source) => source.source_key);
         return sourceSelectionInitialized
@@ -96,6 +100,7 @@ function DiscoveryPanel({ onJobsRefresh }: Props) {
         "Queued " + created.items.length + " source refresh task(s). "
         + "Start the local worker to execute them.",
       );
+      await refreshData();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not queue source discovery.");
     } finally {
@@ -120,6 +125,7 @@ function DiscoveryPanel({ onJobsRefresh }: Props) {
       });
       setSchedules((current) => [created, ...current]);
       setNotice("Schedule saved. Its first discovery run is due immediately when the local scheduler is running.");
+      await refreshData();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not create discovery schedule.");
     } finally {
@@ -141,6 +147,7 @@ function DiscoveryPanel({ onJobsRefresh }: Props) {
       );
       setSchedules((current) => current.map((item) => item.id === updated.id ? updated : item));
       setNotice(updated.is_enabled ? "Discovery schedule resumed." : "Discovery schedule paused.");
+      await refreshData();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not update discovery schedule.");
     } finally {
@@ -158,6 +165,7 @@ function DiscoveryPanel({ onJobsRefresh }: Props) {
       });
       setSchedules((current) => current.filter((item) => item.id !== scheduleId));
       setNotice("Schedule deleted. Already queued discovery tasks remain in the worker queue.");
+      await refreshData();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not delete discovery schedule.");
     } finally {
@@ -176,6 +184,7 @@ function DiscoveryPanel({ onJobsRefresh }: Props) {
       );
       setTasks((current) => current.map((task) => task.id === updated.id ? updated : task));
       setNotice("Discovery task cancelled.");
+      await refreshData();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not cancel discovery task.");
     } finally {
@@ -208,6 +217,12 @@ function DiscoveryPanel({ onJobsRefresh }: Props) {
       ?? Math.round(seconds / 3600) + " hours";
   }
 
+  const queuedCount = (operations?.task_counts.queued ?? 0)
+    + (operations?.task_counts.retry_wait ?? 0);
+  const runningCount = operations?.task_counts.running ?? 0;
+  const failedCount = (operations?.task_counts.failed ?? 0)
+    + (operations?.task_counts.needs_attention ?? 0);
+
   return (
     <section className="panel discovery-panel">
       <div className="panel-heading">
@@ -217,6 +232,30 @@ function DiscoveryPanel({ onJobsRefresh }: Props) {
         </div>
         <span className="result-count">{tasks.length} recent tasks</span>
       </div>
+      {operations && (
+        <div className="operations-summary" aria-label="Local operations summary">
+          <div className="application-metadata">
+            <span>Database: {operations.database_status}</span>
+            <span>{operations.configured_source_count} configured sources</span>
+            <span>{operations.enabled_schedule_count} active schedules</span>
+            <span>{operations.due_schedule_count} schedules due</span>
+          </div>
+          <div className="application-metadata">
+            <span>{queuedCount} queued/retrying tasks</span>
+            <span>{runningCount} running tasks</span>
+            <span>{failedCount} failed/attention tasks</span>
+            {operations.expired_lease_count > 0 && (
+              <span className="workflow-warning">
+                {operations.expired_lease_count} expired task lease(s) need worker recovery
+              </span>
+            )}
+          </div>
+          <p className="workflow-muted">
+            Summary updated {new Date(operations.generated_at).toLocaleTimeString()}.
+            The API can verify database access; it does not claim that the separate worker or scheduler process is running.
+          </p>
+        </div>
+      )}
       <p className="workflow-muted">
         Discovery runs in a separate local worker. Configure public Greenhouse or Lever board
         identifiers in your environment, then keep the worker running while tasks execute.
