@@ -58,6 +58,9 @@ async def read_bounded_response(
     """Read a streamed HTTP response while bounding decompressed bytes in memory."""
     if max_bytes < 1:
         raise ValueError("max_bytes must be positive.")
+    content_encoding = response.headers.get("Content-Encoding", "identity").strip().casefold()
+    if content_encoding not in {"", "identity"}:
+        raise SourcePolicyError("Compressed source responses are not supported.")
     content_length = response.headers.get("Content-Length")
     if content_length is not None:
         try:
@@ -67,9 +70,15 @@ async def read_bounded_response(
         if declared_length > max_bytes:
             raise SourcePolicyError("Source response exceeds the configured byte limit.")
 
+    if response.is_stream_consumed:
+        body = response.content
+        if len(body) > max_bytes:
+            raise SourcePolicyError("Source response exceeds the configured byte limit.")
+        return body
+
     chunks: list[bytes] = []
     total = 0
-    async for chunk in response.aiter_bytes():
+    async for chunk in response.aiter_raw():
         total += len(chunk)
         if total > max_bytes:
             raise SourcePolicyError("Source response exceeds the configured byte limit.")

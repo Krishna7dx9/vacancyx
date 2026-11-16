@@ -66,6 +66,7 @@ def test_greenhouse_adapter_maps_listing_and_validates_next_page() -> None:
     )
     assert requests[0].url.scheme == "https"
     assert requests[0].headers["user-agent"].startswith("VacancyX/")
+    assert requests[0].headers["accept-encoding"] == "identity"
 
 
 def test_greenhouse_adapter_rejects_untrusted_pagination_host() -> None:
