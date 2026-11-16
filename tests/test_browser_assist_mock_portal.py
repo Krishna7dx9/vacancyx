@@ -76,11 +76,13 @@ class FakePage:
         *,
         body_text: str = "Welcome to the application",
         redirect_url: str | None = None,
+        navigation_error: Exception | None = None,
     ) -> None:
         self.main_frame = object()
         self.url = "about:blank"
         self.body_text = body_text
         self.redirect_url = redirect_url
+        self.navigation_error = navigation_error
         self.route_handler: Callable[[Any], None] | None = None
         self.routes: list[FakeRoute] = []
         self.form_locator = FakeLocator(
@@ -107,6 +109,8 @@ class FakePage:
         if initial.aborted:
             raise RuntimeError("Initial navigation was blocked.")
         self.url = url
+        if self.navigation_error is not None:
+            raise self.navigation_error
         if self.redirect_url is not None:
             redirect = self._navigate(self.redirect_url)
             if redirect.aborted:
@@ -216,14 +220,59 @@ def test_mock_employer_portal_blocks_off_allowlist_redirect(
     page = FakePage(redirect_url="https://evil.example.test/collect")
     browser = _install_fake_playwright(monkeypatch, page)
 
-    with pytest.raises(RuntimeError, match="redirect was blocked"):
-        browser_runner.run_browser_assist(
-            "https://jobs.example.test/apply",
-            {"candidate": {"display_name": "Synthetic Candidate"}},
-            {"jobs.example.test"},
-        )
+    result = browser_runner.run_browser_assist(
+        "https://jobs.example.test/apply",
+        {"candidate": {"display_name": "Synthetic Candidate"}},
+        {"jobs.example.test"},
+    )
 
     assert browser.closed
+    assert result.interruption_codes == ("browser_session_uncertain",)
+    assert result.manual_review_reasons == ("check_employer_portal_before_retry",)
     assert page.routes[0].continued
     assert page.routes[1].aborted
     assert all(control.value is None for control in page.form_locator.controls)
+
+
+def test_mock_employer_portal_navigation_timeout_is_uncertain_not_success(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    page = FakePage(navigation_error=TimeoutError("synthetic timeout"))
+    browser = _install_fake_playwright(monkeypatch, page)
+
+    result = browser_runner.run_browser_assist(
+        "https://jobs.example.test/apply",
+        {"candidate": {"display_name": "Synthetic Candidate"}},
+        {"jobs.example.test"},
+    )
+
+    assert browser.closed
+    assert result.interruption_codes == ("browser_session_uncertain",)
+    assert result.filled_field_count == 0
+    assert result.manual_review_reasons == ("check_employer_portal_before_retry",)
+
+
+def test_mock_employer_portal_fill_failure_reports_partial_count(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    page = FakePage()
+    page.form_locator.controls[1].fill = lambda _value: (_ for _ in ()).throw(
+        RuntimeError("synthetic control failure")
+    )
+    browser = _install_fake_playwright(monkeypatch, page)
+
+    result = browser_runner.run_browser_assist(
+        "https://jobs.example.test/apply",
+        {
+            "candidate": {
+                "display_name": "Synthetic Candidate",
+                "email": "candidate@example.test",
+            }
+        },
+        {"jobs.example.test"},
+    )
+
+    assert browser.closed
+    assert result.interruption_codes == ("browser_session_uncertain",)
+    assert result.filled_field_count == 1
+    assert result.manual_review_reasons == ("check_employer_portal_before_retry",)
