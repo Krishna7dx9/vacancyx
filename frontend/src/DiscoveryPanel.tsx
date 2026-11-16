@@ -129,6 +129,10 @@ function DiscoveryPanel({ onJobsRefresh }: Props) {
   }
 
   async function deleteSourceConfiguration(source: PublicJobSourceConfig) {
+    const confirmed = window.confirm(
+      "Remove " + source.company_name + "? Existing schedules that reference it will need to be updated.",
+    );
+    if (!confirmed) return;
     setBusy("source-delete:" + source.source_key);
     setError("");
     setNotice("");
