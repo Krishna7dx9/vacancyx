@@ -414,7 +414,11 @@ function App() {
             {candidates.length > 0 && (
               <label className="field">
                 <span>Active candidate</span>
-                <select value={selectedCandidateId} onChange={(event) => setSelectedCandidateId(event.target.value)}>
+                <select value={selectedCandidateId} onChange={(event) => {
+                  setSelectedCandidateId(event.target.value);
+                  setCandidateEditOpen(false);
+                  setSearchEditOpen(false);
+                }}>
                   {candidates.map((candidate) => (
                     <option key={candidate.id} value={candidate.id}>{candidate.display_name}</option>
                   ))}
@@ -507,7 +511,11 @@ function App() {
             {profiles.length > 0 && (
               <label className="field">
                 <span>Saved search</span>
-                <select value={selectedProfileId} onChange={(event) => { setSelectedProfileId(event.target.value); setMatches(null); }}>
+                <select value={selectedProfileId} onChange={(event) => {
+                  setSelectedProfileId(event.target.value);
+                  setSearchEditOpen(false);
+                  setMatches(null);
+                }}>
                   {profiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name}</option>)}
                 </select>
               </label>
