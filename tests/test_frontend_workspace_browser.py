@@ -58,7 +58,9 @@ def _api_response(route: Any) -> None:
     request = route.request
     path = request.url.split("/api/v1", 1)[-1]
     method = request.method
-    payload = json.loads(request.post_data) if request.post_data else {}
+    payload: dict[str, Any] = {}
+    if request.post_data and "application/json" in request.headers.get("content-type", ""):
+        payload = json.loads(request.post_data)
 
     if path == "/candidates" and method == "GET":
         body: Any = []
@@ -137,9 +139,25 @@ def _api_response(route: Any) -> None:
             "processes": [],
             "generated_at": "2026-01-01T00:00:00Z",
         }
-    elif path == "/candidates/candidate-smoke-1/resumes":
-        body = [_resume()]
-    elif path == "/resumes/resume-smoke-1/parse":
+    elif path == "/candidates/candidate-smoke-1/resumes" and method == "GET":
+        body = STATE.get("resumes", [])
+    elif path == "/candidates/candidate-smoke-1/resumes" and method == "POST":
+        resume = {**_resume(), "parse_status": "uploaded"}
+        STATE["resumes"] = [resume]
+        body = resume
+    elif path == "/resumes/resume-smoke-1/parse/review" and method == "PATCH":
+        parsed = _resume_parse()
+        parsed["parse_status"] = "reviewed"
+        parsed["parsed_content"]["reviewed_fields"] = {
+            "display_name": payload["display_name"],
+            "email": payload.get("email"),
+            "phone": payload.get("phone"),
+            "location": payload.get("location"),
+            "skills": payload.get("skills", []),
+        }
+        STATE["resumes"][0]["parse_status"] = "reviewed"
+        body = parsed
+    elif path == "/resumes/resume-smoke-1/parse" and method == "POST":
         body = _resume_parse()
     elif path.startswith("/candidates/candidate-smoke-1/answers") and method == "GET":
         body = STATE.get("answers", [])
@@ -260,7 +278,7 @@ def _resume_parse() -> dict[str, Any]:
     candidate = STATE.get("candidate", {})
     return {
         "id": "resume-smoke-1",
-        "parse_status": "reviewed",
+        "parse_status": "parsed",
         "parsed_content": {
             "reviewed_fields": {
                 "display_name": candidate.get("display_name", "Smoke Test Candidate"),
@@ -352,7 +370,7 @@ def _job() -> dict[str, Any]:
 
 def test_workspace_candidate_search_and_matching_flow() -> None:
     STATE.clear()
-    STATE.update({"answers": [], "applications": [], "batches": [], "events": []})
+    STATE.update({"answers": [], "applications": [], "batches": [], "events": [], "resumes": []})
     server = subprocess.Popen(
         ["npm", "run", "dev", "--", "--host", "127.0.0.1", "--port", "5173", "--strictPort"],
         cwd=FRONTEND,
@@ -392,6 +410,25 @@ def test_workspace_candidate_search_and_matching_flow() -> None:
             page.get_by_role("button", name="Evaluate my matches").click()
             expect(page.get_by_text("91.5", exact=True)).to_be_visible()
             expect(page.get_by_text("eligible", exact=True)).to_be_visible()
+
+            page.locator('input[type="file"]').set_input_files({
+                "name": "synthetic-resume.txt",
+                "mimeType": "text/plain",
+                "buffer": b"Synthetic resume\\nPython\\nSQL\\nFastAPI",
+            })
+            page.get_by_role("button", name="Upload resume").click()
+            expect(
+                page.get_by_text("Resume uploaded to private local storage. Parse it to review extracted fields.")
+            ).to_be_visible()
+            page.get_by_role("button", name="Parse locally").click()
+            expect(
+                page.get_by_text("Resume parsed locally. Review the suggested fields before marking it reviewed.")
+            ).to_be_visible()
+            page.get_by_label("Name", exact=True).fill("Reviewed Smoke Candidate")
+            page.get_by_role("button", name="Confirm reviewed fields").click()
+            expect(
+                page.get_by_text("Resume fields marked reviewed. Candidate profile contact details remain separately editable above.")
+            ).to_be_visible()
 
             page.get_by_label("Question").fill("Why backend engineering?")
             page.get_by_label("Answer").fill("I build Python APIs and data workflows.")
