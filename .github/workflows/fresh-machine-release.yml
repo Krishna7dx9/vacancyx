@@ -8,6 +8,7 @@ on:
       - "pyproject.toml"
       - "tests/**"
       - "alembic.ini"
+      - ".env.example"
       - ".github/workflows/fresh-machine-release.yml"
   push:
     branches: [main]
@@ -17,6 +18,7 @@ on:
       - "pyproject.toml"
       - "tests/**"
       - "alembic.ini"
+      - ".env.example"
       - ".github/workflows/fresh-machine-release.yml"
   workflow_dispatch:
 
