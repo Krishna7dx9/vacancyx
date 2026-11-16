@@ -383,13 +383,13 @@ def test_workspace_candidate_search_and_matching_flow() -> None:
             page.get_by_label("Open job").select_option("job-smoke-1")
             page.get_by_label("Additional application note").fill("Synthetic review note.")
             page.get_by_role("button", name="Prepare application draft").click()
-            expect(page.locator(".application-item .status-pill")).to_have_text("prepared")
+            expect(page.locator(".application-item .workflow-item-heading .status-pill")).to_have_text("prepared")
 
             page.get_by_label("Add this draft to a review batch").check()
             page.get_by_role("button", name="Create batch from 1 selected").click()
             page.locator(".batch-review-item input[type='checkbox']").check()
             page.get_by_role("button", name="Approve selected").click()
-            expect(page.locator(".application-item .status-pill")).to_have_text("approved")
+            expect(page.locator(".application-item .workflow-item-heading .status-pill")).to_have_text("approved")
 
             page.get_by_role("button", name="Mark submission started").click()
             expect(page.locator(".tracking-item .status-pill")).to_have_text("submitting")
