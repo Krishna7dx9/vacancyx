@@ -39,6 +39,25 @@ function App() {
   const [candidatePhone, setCandidatePhone] = useState("");
   const [candidateSkills, setCandidateSkills] = useState("");
   const [candidateLocation, setCandidateLocation] = useState("");
+  const [candidateEditOpen, setCandidateEditOpen] = useState(false);
+  const [editCandidateName, setEditCandidateName] = useState("");
+  const [editCandidateEmail, setEditCandidateEmail] = useState("");
+  const [editCandidatePhone, setEditCandidatePhone] = useState("");
+  const [editCandidateLocation, setEditCandidateLocation] = useState("");
+  const [editCandidateSkills, setEditCandidateSkills] = useState("");
+  const [searchEditOpen, setSearchEditOpen] = useState(false);
+  const [editProfileName, setEditProfileName] = useState("");
+  const [editProfileEnabled, setEditProfileEnabled] = useState(true);
+  const [editProfileCriteria, setEditProfileCriteria] = useState<MatchCriteria>({
+    target_titles: [],
+    excluded_keywords: [],
+    required_skills: [],
+    allowed_locations: [],
+    work_modes: [],
+    employment_types: [],
+  });
+  const [editMinimumSalary, setEditMinimumSalary] = useState("");
+  const [editSalaryCurrency, setEditSalaryCurrency] = useState("");
   const [profileName, setProfileName] = useState("My software engineering search");
   const [targetTitles, setTargetTitles] = useState("");
   const [requiredSkills, setRequiredSkills] = useState("");
@@ -126,6 +145,127 @@ function App() {
       setNotice("Candidate profile created.");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not create candidate profile.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  function openCandidateEditor() {
+    if (!selectedCandidate) return;
+    setEditCandidateName(selectedCandidate.display_name);
+    setEditCandidateEmail(selectedCandidate.email ?? "");
+    setEditCandidatePhone(selectedCandidate.phone ?? "");
+    setEditCandidateLocation(selectedCandidate.location ?? "");
+    setEditCandidateSkills(selectedCandidate.skills.join(", "));
+    setCandidateEditOpen(true);
+  }
+
+  async function updateCandidate(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedCandidateId) return;
+    setBusy("candidate-edit");
+    setError("");
+    setNotice("");
+    try {
+      const updated = await apiRequest<Candidate>(
+        "/candidates/" + encodeURIComponent(selectedCandidateId),
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            display_name: editCandidateName.trim(),
+            email: editCandidateEmail.trim() || null,
+            phone: editCandidatePhone.trim() || null,
+            location: editCandidateLocation.trim() || null,
+            skills: splitTerms(editCandidateSkills),
+          }),
+        },
+      );
+      setCandidates((current) => current.map((item) => item.id === updated.id ? updated : item));
+      setCandidateEditOpen(false);
+      setNotice("Candidate profile updated.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not update candidate profile.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  function openSearchEditor() {
+    if (!selectedProfile) return;
+    setEditProfileName(selectedProfile.name);
+    setEditProfileEnabled(selectedProfile.is_enabled);
+    setEditProfileCriteria({
+      target_titles: [...selectedProfile.criteria.target_titles],
+      excluded_keywords: [...selectedProfile.criteria.excluded_keywords],
+      required_skills: [...selectedProfile.criteria.required_skills],
+      allowed_locations: [...selectedProfile.criteria.allowed_locations],
+      work_modes: [...selectedProfile.criteria.work_modes],
+      employment_types: [...selectedProfile.criteria.employment_types],
+      ...(selectedProfile.criteria.minimum_salary !== undefined
+        ? { minimum_salary: selectedProfile.criteria.minimum_salary }
+        : {}),
+      ...(selectedProfile.criteria.salary_currency
+        ? { salary_currency: selectedProfile.criteria.salary_currency }
+        : {}),
+    });
+    setEditMinimumSalary(
+      selectedProfile.criteria.minimum_salary === undefined
+        ? ""
+        : String(selectedProfile.criteria.minimum_salary),
+    );
+    setEditSalaryCurrency(selectedProfile.criteria.salary_currency ?? "");
+    setSearchEditOpen(true);
+  }
+
+  async function updateSearchProfile(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedCandidateId || !selectedProfileId) return;
+    if (editMinimumSalary.trim()) {
+      const amount = Number(editMinimumSalary);
+      if (!Number.isFinite(amount) || amount < 0) {
+        setError("Enter a valid non-negative minimum salary.");
+        return;
+      }
+      if (!/^[A-Za-z]{3}$/.test(editSalaryCurrency.trim())) {
+        setError("Enter a three-letter currency with the minimum salary.");
+        return;
+      }
+    }
+    const criteria: MatchCriteria = {
+      ...editProfileCriteria,
+      ...(editMinimumSalary.trim()
+        ? {
+            minimum_salary: Number(editMinimumSalary),
+            salary_currency: editSalaryCurrency.trim().toUpperCase(),
+          }
+        : {}),
+    };
+    if (!editMinimumSalary.trim()) {
+      delete criteria.minimum_salary;
+      delete criteria.salary_currency;
+    }
+    setBusy("profile-edit");
+    setError("");
+    setNotice("");
+    try {
+      const updated = await apiRequest<SearchProfile>(
+        "/candidates/" + encodeURIComponent(selectedCandidateId)
+          + "/search-profiles/" + encodeURIComponent(selectedProfileId),
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            name: editProfileName.trim(),
+            is_enabled: editProfileEnabled,
+            criteria,
+          }),
+        },
+      );
+      setProfiles((current) => current.map((item) => item.id === updated.id ? updated : item));
+      setSearchEditOpen(false);
+      setMatches(null);
+      setNotice("Saved search profile updated.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not update search profile.");
     } finally {
       setBusy(null);
     }
@@ -291,6 +431,44 @@ function App() {
                 </div>
               </div>
             )}
+            {selectedCandidate && (
+              <>
+                <button
+                  className="text-button"
+                  type="button"
+                  onClick={() => candidateEditOpen ? setCandidateEditOpen(false) : openCandidateEditor()}
+                >
+                  {candidateEditOpen ? "Cancel profile edit" : "Edit active profile"}
+                </button>
+                {candidateEditOpen && (
+                  <form onSubmit={(event) => void updateCandidate(event)} className="stack-form editor-form">
+                    <label className="field">
+                      <span>Display name</span>
+                      <input value={editCandidateName} onChange={(event) => setEditCandidateName(event.target.value)} required maxLength={160} />
+                    </label>
+                    <label className="field">
+                      <span>Email</span>
+                      <input type="email" value={editCandidateEmail} onChange={(event) => setEditCandidateEmail(event.target.value)} />
+                    </label>
+                    <label className="field">
+                      <span>Phone</span>
+                      <input value={editCandidatePhone} onChange={(event) => setEditCandidatePhone(event.target.value)} />
+                    </label>
+                    <label className="field">
+                      <span>Current location</span>
+                      <input value={editCandidateLocation} onChange={(event) => setEditCandidateLocation(event.target.value)} />
+                    </label>
+                    <label className="field">
+                      <span>Skills <small>comma-separated</small></span>
+                      <input value={editCandidateSkills} onChange={(event) => setEditCandidateSkills(event.target.value)} />
+                    </label>
+                    <button className="button button-primary" type="submit" disabled={busy === "candidate-edit"}>
+                      {busy === "candidate-edit" ? "Saving…" : "Save profile changes"}
+                    </button>
+                  </form>
+                )}
+              </>
+            )}
             <details className="editor">
               <summary>{candidates.length ? "Add another candidate" : "Create your first candidate profile"}</summary>
               <form onSubmit={createCandidate} className="stack-form">
@@ -341,6 +519,68 @@ function App() {
                 </span>
                 <span>{selectedProfile.criteria.target_titles?.length ?? 0} target titles</span>
               </div>
+            )}
+            {selectedProfile && (
+              <>
+                <button
+                  className="text-button"
+                  type="button"
+                  onClick={() => searchEditOpen ? setSearchEditOpen(false) : openSearchEditor()}
+                >
+                  {searchEditOpen ? "Cancel search edit" : "Edit saved search"}
+                </button>
+                {searchEditOpen && (
+                  <form onSubmit={(event) => void updateSearchProfile(event)} className="stack-form editor-form">
+                    <label className="field">
+                      <span>Search name</span>
+                      <input value={editProfileName} onChange={(event) => setEditProfileName(event.target.value)} required maxLength={120} />
+                    </label>
+                    <label className="field">
+                      <span>Target job titles <small>comma-separated</small></span>
+                      <input value={editProfileCriteria.target_titles.join(", ")} onChange={(event) => setEditProfileCriteria((current) => ({ ...current, target_titles: splitTerms(event.target.value) }))} />
+                    </label>
+                    <label className="field">
+                      <span>Required job skills</span>
+                      <input value={editProfileCriteria.required_skills.join(", ")} onChange={(event) => setEditProfileCriteria((current) => ({ ...current, required_skills: splitTerms(event.target.value) }))} />
+                    </label>
+                    <label className="field">
+                      <span>Exclude keywords</span>
+                      <input value={editProfileCriteria.excluded_keywords.join(", ")} onChange={(event) => setEditProfileCriteria((current) => ({ ...current, excluded_keywords: splitTerms(event.target.value) }))} />
+                    </label>
+                    <label className="field">
+                      <span>Allowed locations</span>
+                      <input value={editProfileCriteria.allowed_locations.join(", ")} onChange={(event) => setEditProfileCriteria((current) => ({ ...current, allowed_locations: splitTerms(event.target.value) }))} />
+                    </label>
+                    <div className="field-row">
+                      <label className="field">
+                        <span>Work modes</span>
+                        <input value={editProfileCriteria.work_modes.join(", ")} onChange={(event) => setEditProfileCriteria((current) => ({ ...current, work_modes: splitTerms(event.target.value) }))} />
+                      </label>
+                      <label className="field">
+                        <span>Employment types</span>
+                        <input value={editProfileCriteria.employment_types.join(", ")} onChange={(event) => setEditProfileCriteria((current) => ({ ...current, employment_types: splitTerms(event.target.value) }))} />
+                      </label>
+                    </div>
+                    <div className="field-row">
+                      <label className="field">
+                        <span>Minimum salary</span>
+                        <input type="number" min="0" value={editMinimumSalary} onChange={(event) => setEditMinimumSalary(event.target.value)} placeholder="Optional" />
+                      </label>
+                      <label className="field">
+                        <span>Currency</span>
+                        <input value={editSalaryCurrency} onChange={(event) => setEditSalaryCurrency(event.target.value.toUpperCase())} maxLength={3} placeholder="INR, USD…" />
+                      </label>
+                    </div>
+                    <label className="check-row">
+                      <input type="checkbox" checked={editProfileEnabled} onChange={(event) => setEditProfileEnabled(event.target.checked)} />
+                      <span>Search profile enabled</span>
+                    </label>
+                    <button className="button button-primary" type="submit" disabled={busy === "profile-edit"}>
+                      {busy === "profile-edit" ? "Saving…" : "Save search changes"}
+                    </button>
+                  </form>
+                )}
+              </>
             )}
             <details className="editor" open={profiles.length === 0}>
               <summary>{profiles.length ? "Create another search profile" : "Configure your first search"}</summary>
