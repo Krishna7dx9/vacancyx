@@ -120,6 +120,8 @@ def test_source_config_rejects_unbounded_limits_and_bad_hosts() -> None:
         _config(requests_per_minute=500)
     with pytest.raises(ValueError):
         _config(allowed_hosts=("https://example.test",))
+    with pytest.raises(ValueError):
+        _config(max_response_bytes=21 * 1024 * 1024)
 
 
 
