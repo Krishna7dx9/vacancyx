@@ -481,7 +481,8 @@ def test_workspace_candidate_search_and_matching_flow() -> None:
             page.get_by_role("button", name="Save recurring schedule").click()
             expect(
                 page.get_by_text(
-                    "Schedule saved. Its first discovery run is due immediately when the local scheduler is running."
+                    "Schedule saved. Its first discovery run is due immediately "
+                    "when the local scheduler is running."
                 )
             ).to_be_visible()
             expect(page.get_by_text("Smoke daily refresh")).to_be_visible()
