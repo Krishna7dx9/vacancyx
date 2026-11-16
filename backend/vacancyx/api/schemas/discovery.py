@@ -1,15 +1,74 @@
 """Public job discovery task API contracts."""
 
 from datetime import datetime
+import re
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class DiscoverySourceRead(BaseModel):
     source_key: str
     company_name: str
     provider: str
+
+
+class PublicJobSourceRead(DiscoverySourceRead):
+    is_enabled: bool
+    managed_by: Literal["environment", "database"]
+
+
+class PublicJobSourceCreate(BaseModel):
+    provider: Literal["greenhouse", "lever"]
+    external_key: str = Field(min_length=2, max_length=74)
+    company_name: str = Field(min_length=1, max_length=200)
+    is_enabled: bool = True
+
+    @field_validator("external_key")
+    @classmethod
+    def normalize_external_key(cls, value: str) -> str:
+        return value.strip()
+
+    @field_validator("company_name")
+    @classmethod
+    def normalize_company_name(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("company_name cannot be blank.")
+        return normalized
+
+    @model_validator(mode="after")
+    def validate_provider_key(self) -> "PublicJobSourceCreate":
+        pattern = r"^[A-Za-z0-9_-]+$" if self.provider == "greenhouse" else r"^[A-Za-z0-9-]+$"
+        maximum = 69 if self.provider == "greenhouse" else 74
+        if len(self.external_key) > maximum or not re.fullmatch(pattern, self.external_key):
+            raise ValueError("external_key contains characters not allowed by this provider.")
+        return self
+
+    @property
+    def source_key(self) -> str:
+        return self.provider + "-" + self.external_key.lower()
+
+
+class PublicJobSourceUpdate(BaseModel):
+    company_name: str | None = Field(default=None, min_length=1, max_length=200)
+    is_enabled: bool | None = None
+
+    @field_validator("company_name")
+    @classmethod
+    def normalize_company_name(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("company_name cannot be blank.")
+        return normalized
+
+    @model_validator(mode="after")
+    def require_changes(self) -> "PublicJobSourceUpdate":
+        if self.company_name is None and self.is_enabled is None:
+            raise ValueError("At least one source field must be provided.")
+        return self
 
 
 class DiscoverySourcesResponse(BaseModel):
