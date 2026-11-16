@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from vacancyx.api.schemas.operations import OperationsSummaryRead
+from vacancyx.api.schemas.operations import OperationsSummaryRead, ProcessHeartbeatRead
 from vacancyx.config import get_settings
 from vacancyx.db.session import get_session
 from vacancyx.models import AutomationTask, DiscoverySchedule
@@ -69,6 +69,9 @@ def operations_summary(session: SessionDep) -> OperationsSummaryRead:
         next_schedule_at=next_schedule_at,
         task_counts=task_counts,
         expired_lease_count=expired_lease_count,
-        processes=read_process_heartbeats(settings.storage_dir),
+        processes=[
+            ProcessHeartbeatRead.model_validate(item)
+            for item in read_process_heartbeats(settings.storage_dir)
+        ],
         generated_at=now,
     )
