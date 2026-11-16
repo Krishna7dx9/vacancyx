@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 from urllib.parse import urljoin
 
@@ -9,7 +10,7 @@ import httpx
 
 from vacancyx.sources.config import SourceConfig
 from vacancyx.sources.contracts import SourceCapabilities, SourceListing, SourcePage
-from vacancyx.sources.policy import validate_source_url
+from vacancyx.sources.policy import read_bounded_response, validate_source_url
 
 
 class GreenhouseJobBoardAdapter:
@@ -54,10 +55,16 @@ class GreenhouseJobBoardAdapter:
             follow_redirects=False,
             transport=self._transport,
         ) as client:
-            response = await client.get(url)
-            response.raise_for_status()
+            async with client.stream("GET", url) as response:
+                response.raise_for_status()
+                body = await read_bounded_response(
+                    response,
+                    max_bytes=self._config.max_response_bytes,
+                )
+                link_header = response.headers.get("Link")
+                response_url = str(response.url)
 
-        payload: Any = response.json()
+        payload: Any = json.loads(body)
         raw_jobs = payload.get("jobs") if isinstance(payload, dict) else None
         if not isinstance(raw_jobs, list):
             raise ValueError("Greenhouse response did not contain a jobs list.")
@@ -81,7 +88,7 @@ class GreenhouseJobBoardAdapter:
                 )
             )
 
-        next_cursor = self._next_link(response.headers.get("Link"), str(response.url))
+        next_cursor = self._next_link(link_header, response_url)
         if next_cursor is not None:
             validate_source_url(next_cursor, self._config)
         return SourcePage(items=tuple(listings), next_cursor=next_cursor)
