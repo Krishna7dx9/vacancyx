@@ -121,7 +121,7 @@ def _api_response(route: Any) -> None:
         body = [_resume()]
     elif path == "/resumes/resume-smoke-1/parse":
         body = _resume_parse()
-    elif path == "/candidates/candidate-smoke-1/answers" and method == "GET":
+    elif path.startswith("/candidates/candidate-smoke-1/answers") and method == "GET":
         body = STATE.get("answers", [])
     elif path == "/candidates/candidate-smoke-1/answers" and method == "POST":
         answer = {
