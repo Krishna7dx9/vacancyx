@@ -466,7 +466,9 @@ def test_workspace_candidate_search_and_matching_flow() -> None:
                     "Acme Systems was added. Restart the worker and scheduler to load it."
                 )
             ).to_be_visible()
-            expect(page.get_by_text("greenhouse · greenhouse-acme")).to_be_visible()
+            expect(
+                page.locator(".source-config-item").get_by_text("greenhouse · greenhouse-acme")
+            ).to_be_visible()
 
             page.get_by_role("button", name="Queue selected sources").click()
             expect(
