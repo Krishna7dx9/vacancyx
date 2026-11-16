@@ -250,9 +250,23 @@ function DiscoveryPanel({ onJobsRefresh }: Props) {
               </span>
             )}
           </div>
+          <div className="application-metadata" aria-label="Worker and scheduler process health">
+            {(["worker", "scheduler"] as const).map((role) => {
+              const instances = operations.processes.filter((process) => process.role === role);
+              const running = instances.filter((process) => process.status === "running").length;
+              const stale = instances.filter((process) => process.status === "stale").length;
+              const label = role === "worker" ? "Worker" : "Scheduler";
+              return (
+                <span key={role} className={stale > 0 ? "workflow-warning" : ""}>
+                  {label}: {running > 0 ? running + " running" : "not running"}
+                  {stale > 0 ? " · " + stale + " stale" : ""}
+                </span>
+              );
+            })}
+          </div>
           <p className="workflow-muted">
-            Summary updated {new Date(operations.generated_at).toLocaleTimeString()}.
-            The API can verify database access; it does not claim that the separate worker or scheduler process is running.
+            Process liveness is based on local heartbeats (45-second timeout). Summary updated{" "}
+            {new Date(operations.generated_at).toLocaleTimeString()}.
           </p>
         </div>
       )}
