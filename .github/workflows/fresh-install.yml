@@ -80,6 +80,7 @@ jobs:
           npm run build
       - name: Ensure generated local data is not tracked
         run: |
+          rm -f frontend/tsconfig.tsbuildinfo
           git status --short
           test -z "$(git status --porcelain --untracked-files=all)"
 
