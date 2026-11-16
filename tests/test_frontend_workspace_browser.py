@@ -703,7 +703,7 @@ def test_workspace_uses_live_local_api_for_candidate_and_matching() -> None:
                     ).to_be_visible()
 
                     page.get_by_label("Open job").select_option(
-                        label="Backend Engineer — Demo"
+                        label="Backend Engineer — Demo — Example Systems (Synthetic)"
                     )
                     page.get_by_label("Additional application note").fill(
                         "Initial synthetic application note."
