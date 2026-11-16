@@ -6,6 +6,7 @@ on:
       - "backend/**"
       - "frontend/**"
       - "pyproject.toml"
+      - "tests/**"
       - "alembic.ini"
       - ".github/workflows/fresh-machine-release.yml"
   push:
