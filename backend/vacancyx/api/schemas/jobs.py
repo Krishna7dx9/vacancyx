@@ -5,6 +5,16 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict
 
 
+class JobObservationRead(BaseModel):
+    """Safe source provenance summary without raw provider payload or external IDs."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    source_key: str
+    first_seen_at: datetime
+    last_seen_at: datetime
+
+
 class JobRead(BaseModel):
     """Public job facts; source provenance remains available through observations later."""
 
@@ -24,6 +34,7 @@ class JobRead(BaseModel):
     first_published_at: datetime | None
     last_verified_at: datetime | None
     status: str
+    observations: list[JobObservationRead] = []
     created_at: datetime
     updated_at: datetime
 
