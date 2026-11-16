@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
+import sys
+import tempfile
 import time
 import urllib.error
 import urllib.request
@@ -32,6 +35,21 @@ def _wait_for_vite(process: subprocess.Popen[str]) -> None:
         except (OSError, urllib.error.URLError):
             time.sleep(0.25)
     raise AssertionError("Vite did not become ready within 30 seconds.")
+
+
+
+def _wait_for_api(process: subprocess.Popen[str]) -> None:
+    deadline = time.monotonic() + 30
+    while time.monotonic() < deadline:
+        if process.poll() is not None:
+            raise AssertionError("FastAPI exited before becoming ready.")
+        try:
+            with urllib.request.urlopen("http://127.0.0.1:8000/health/ready", timeout=1) as response:
+                if response.status == 200:
+                    return
+        except (OSError, urllib.error.URLError):
+            time.sleep(0.25)
+    raise AssertionError("FastAPI did not become ready within 30 seconds.")
 
 
 def _api_response(route: Any) -> None:
@@ -409,3 +427,109 @@ def test_workspace_candidate_search_and_matching_flow() -> None:
         except subprocess.TimeoutExpired:
             server.kill()
             server.wait(timeout=5)
+
+
+def test_workspace_uses_live_local_api_for_candidate_and_matching() -> None:
+    with tempfile.TemporaryDirectory(prefix="vacancyx-browser-e2e-") as temporary:
+        temporary_path = Path(temporary)
+        environment = os.environ.copy()
+        environment.update({
+            "VACANCYX_DATABASE_URL": f"sqlite:///{temporary_path / 'workspace.db'}",
+            "VACANCYX_STORAGE_DIR": str(temporary_path / "storage"),
+            "VACANCYX_ENVIRONMENT": "test",
+            "VACANCYX_API_HOST": "127.0.0.1",
+            "VACANCYX_API_PORT": "8000",
+        })
+        subprocess.run(
+            ["alembic", "upgrade", "head"],
+            cwd=ROOT,
+            env=environment,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        subprocess.run(
+            ["vacancyx-demo-seed"],
+            cwd=ROOT,
+            env=environment,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+
+        api_server = subprocess.Popen(
+            [
+                sys.executable, "-m", "uvicorn", "vacancyx.main:app",
+                "--host", "127.0.0.1", "--port", "8000",
+            ],
+            cwd=ROOT,
+            env=environment,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+        frontend_server: subprocess.Popen[str] | None = None
+        try:
+            _wait_for_api(api_server)
+            frontend_server = subprocess.Popen(
+                [
+                    "npm", "run", "dev", "--", "--host", "127.0.0.1",
+                    "--port", "5173", "--strictPort",
+                ],
+                cwd=FRONTEND,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.STDOUT,
+                text=True,
+            )
+            _wait_for_vite(frontend_server)
+
+            with playwright_api.sync_playwright() as runtime:
+                browser = runtime.chromium.launch(headless=True)
+                try:
+                    page = browser.new_page()
+                    page.goto("http://127.0.0.1:5173", wait_until="networkidle")
+                    page.get_by_role("heading", name="Find the right role.").wait_for(state="visible")
+
+                    page.get_by_text("Add another candidate").click()
+                    page.get_by_label("Display name", exact=True).fill("Live API Smoke Candidate")
+                    page.get_by_placeholder("Python, SQL, FastAPI").fill("Python, SQL, FastAPI")
+                    page.get_by_placeholder("name@example.com").fill("live-api@example.test")
+                    page.get_by_placeholder("Phone number").fill("0000000000")
+                    page.get_by_label("Current location").fill("India")
+                    page.get_by_role("button", name="Save candidate").click()
+                    expect(page.locator(".candidate-summary strong")).to_have_text(
+                        "Live API Smoke Candidate"
+                    )
+
+                    page.get_by_label("Search name").fill("Live API backend roles")
+                    page.get_by_label("Target job titles").fill("Backend Engineer")
+                    page.get_by_label("Required job skills").fill("Python, SQL, FastAPI")
+                    page.get_by_label("Allowed locations").fill("India")
+                    page.get_by_label("Work modes").fill("Remote")
+                    page.get_by_label("Employment").fill("Full-time")
+                    page.get_by_role("button", name="Save search profile").click()
+                    expect(page.get_by_text("Search profile saved.")).to_be_visible()
+
+                    page.get_by_label("Role, company or keyword").fill("Backend Engineer")
+                    page.get_by_role("button", name="Search jobs").click()
+                    expect(
+                        page.get_by_role("heading", name="Backend Engineer — Demo")
+                    ).to_be_visible()
+                    page.get_by_role("button", name="Evaluate my matches").click()
+                    expect(page.get_by_text("eligible", exact=True)).to_be_visible()
+                finally:
+                    browser.close()
+        finally:
+            if frontend_server is not None:
+                frontend_server.terminate()
+                try:
+                    frontend_server.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    frontend_server.kill()
+                    frontend_server.wait(timeout=5)
+            api_server.terminate()
+            try:
+                api_server.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                api_server.kill()
+                api_server.wait(timeout=5)
