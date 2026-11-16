@@ -8,16 +8,21 @@ application.
 The test verifies this sequence:
 
 1. Create a candidate profile.
-2. Persist a normalized public-source job and its source observation.
-3. Create candidate search criteria and run explainable matching.
-4. Confirm the job is eligible under the supplied criteria.
-5. Attach a synthetic reviewed resume and prepare an immutable application.
-6. Create a revision-bound review batch and approve the exact content hash.
-7. Transition to submitting, reject a submitted transition without confirmation
+2. Register a deterministic synthetic public-source adapter and ingest its
+   normalized listing through the production discovery service.
+3. Persist and verify the source observation and provenance.
+4. Create candidate search criteria and run explainable matching.
+5. Confirm the discovered job is eligible under the supplied criteria.
+6. Attach a synthetic reviewed resume and prepare an immutable application.
+7. Create a revision-bound review batch and approve the exact content hash.
+8. Transition to submitting, reject a submitted transition without confirmation
    evidence, then record submitted only with a synthetic employer confirmation.
-8. Append an interview event and verify the application timeline and audit
+9. Append an interview event and verify the application timeline and audit
    history.
 
-This proves the API and persistence workflow end-to-end. It does not claim that
-external job discovery, a live employer portal, or a real submission has been
-tested. Browser assistance has its own deterministic mocked-portal tests.
+This proves the discovery-service-to-application API and persistence workflow
+end-to-end using a synthetic adapter. The adapter is deterministic and does not
+contact Greenhouse, Lever, or an employer. Provider-specific HTTP mapping is
+covered by separate adapter tests. Browser assistance has separate mocked-portal
+and real Chromium contract tests; the end-to-end API test does not claim to
+exercise a browser session or a real submission.
