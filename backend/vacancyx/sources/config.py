@@ -40,8 +40,6 @@ class SourceConfig(BaseModel):
             raise ValueError("At least one allowed host is required.")
         return tuple(normalized)
 
-
-
 class GreenhouseBoardSetting(BaseModel):
     """One public Greenhouse board configured by its public board URL token."""
 
