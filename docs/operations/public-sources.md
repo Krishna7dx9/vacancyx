@@ -83,6 +83,7 @@ Database-managed source changes appear in the API immediately; restart the sched
 - All fetch URLs are HTTPS and checked against a per-provider host allowlist before requests.
 - Redirects are not followed automatically.
 - Requests have timeouts, per-source rate/concurrency gates, a page-size cap, and a maximum page count.
+- Each provider response is streamed with a 5 MiB default decompressed-body limit (configurable per adapter, capped at 20 MiB); oversized responses fail before JSON parsing.
 - Each fetched page is committed independently; retrying a task deduplicates jobs and source observations.
 - Greenhouse may not expose salary, work mode, or publication time. VacancyX leaves unknown fields blank instead of guessing.
 - Lever fields are normalized only when the API provides them; salary currency is retained as supplied.
