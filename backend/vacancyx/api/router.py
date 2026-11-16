@@ -10,6 +10,7 @@ from vacancyx.api.routes.candidates import router as candidates_router
 from vacancyx.api.routes.discovery import router as discovery_router
 from vacancyx.api.routes.discovery_schedules import router as discovery_schedules_router
 from vacancyx.api.routes.jobs import router as jobs_router
+from vacancyx.api.routes.operations import router as operations_router
 from vacancyx.api.routes.resume_parsing import router as resume_parsing_router
 from vacancyx.api.routes.resumes import router as resumes_router
 from vacancyx.api.routes.search_profiles import router as search_profiles_router
@@ -18,6 +19,7 @@ api_router = APIRouter()
 api_router.include_router(candidates_router)
 api_router.include_router(discovery_router)
 api_router.include_router(discovery_schedules_router)
+api_router.include_router(operations_router)
 api_router.include_router(jobs_router)
 api_router.include_router(search_profiles_router)
 api_router.include_router(answers_router)
