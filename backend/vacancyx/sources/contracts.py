@@ -2,8 +2,8 @@
 
 import ipaddress
 from datetime import datetime
-from urllib.parse import urlsplit
 from typing import Protocol
+from urllib.parse import urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
