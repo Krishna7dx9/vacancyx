@@ -216,7 +216,6 @@ def test_scheduler_requires_bounded_batch_size(workspace) -> None:
         DiscoveryScheduler(factory, lambda: set(), batch_size=501)
 
 
-
 def test_schedule_can_target_database_managed_source(
     workspace, monkeypatch
 ) -> None:
