@@ -71,8 +71,8 @@ def test_backup_rejects_non_sqlite_engine(tmp_path) -> None:
 def test_verify_backup_reports_integrity_schema_and_migration_version(tmp_path) -> None:
     from sqlalchemy import text
 
-    from vacancyx.db.backup import backup_sqlite_database
     from vacancyx.backup_cli import verify_sqlite_backup
+    from vacancyx.db.backup import backup_sqlite_database
 
     source = build_engine(f"sqlite:///{tmp_path / 'source.sqlite3'}")
     try:
