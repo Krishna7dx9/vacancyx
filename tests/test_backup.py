@@ -97,7 +97,7 @@ def test_verify_backup_reports_integrity_schema_and_migration_version(tmp_path) 
 
 
 def test_verify_backup_rejects_missing_and_invalid_files(tmp_path) -> None:
-    from vacancyx.db.backup_cli import verify_sqlite_backup
+    from vacancyx.backup_cli import verify_sqlite_backup
 
     with pytest.raises(FileNotFoundError, match="does not exist"):
         verify_sqlite_backup(tmp_path / "missing.sqlite3")
