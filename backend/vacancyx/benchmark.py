@@ -12,7 +12,7 @@ import platform
 import subprocess
 import time
 from collections import Counter, defaultdict
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import quote, urlsplit
 
