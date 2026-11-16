@@ -2,7 +2,16 @@
 
 from datetime import datetime
 
-from sqlalchemy import JSON, Boolean, CheckConstraint, DateTime, Index, Integer, String, UniqueConstraint
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    Index,
+    Integer,
+    String,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from vacancyx.db.base import Base, TimestampMixin
@@ -14,7 +23,10 @@ class PublicJobSource(TimestampMixin, Base):
 
     __tablename__ = "public_job_sources"
     __table_args__ = (
-        CheckConstraint("provider IN ('greenhouse', 'lever')", name="ck_public_job_sources_provider"),
+        CheckConstraint(
+            "provider IN ('greenhouse', 'lever')",
+            name="ck_public_job_sources_provider",
+        ),
         UniqueConstraint("source_key", name="uq_public_job_sources_source_key"),
         Index("ix_public_job_sources_enabled", "is_enabled"),
     )
