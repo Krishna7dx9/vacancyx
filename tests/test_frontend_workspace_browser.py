@@ -654,6 +654,118 @@ def test_workspace_uses_live_local_api_for_candidate_and_matching() -> None:
                     ).to_be_visible()
                     page.get_by_role("button", name="Evaluate my matches").click()
                     expect(page.get_by_text("eligible", exact=True)).to_be_visible()
+
+                    # Exercise the real API-backed resume, application, approval, and tracking path.
+                    page.locator('input[type="file"]').set_input_files({
+                        "name": "live-api-synthetic-resume.txt",
+                        "mimeType": "text/plain",
+                        "buffer": (
+                            b"Live API Synthetic Candidate\\n"
+                            b"Email: live-api@example.test\\n"
+                            b"Python, SQL, FastAPI\\n"
+                            b"Backend engineering experience"
+                        ),
+                    })
+                    page.get_by_role("button", name="Upload resume").click()
+                    expect(
+                        page.get_by_text(
+                            "Resume uploaded to private local storage. Parse it to review extracted fields."
+                        )
+                    ).to_be_visible()
+                    page.get_by_role("button", name="Parse locally").click()
+                    expect(
+                        page.get_by_text(
+                            "Resume parsed locally. Review the suggested fields before marking it reviewed."
+                        )
+                    ).to_be_visible()
+                    page.get_by_label("Name", exact=True).fill("Live API Reviewed Candidate")
+                    page.get_by_role("button", name="Confirm reviewed fields").click()
+                    expect(
+                        page.get_by_text(
+                            "Resume fields marked reviewed. Candidate profile contact details remain separately editable above."
+                        )
+                    ).to_be_visible()
+
+                    page.get_by_label("Question").fill("Why backend engineering?")
+                    page.get_by_label("Answer").fill(
+                        "I build Python APIs and data workflows with FastAPI and SQL."
+                    )
+                    page.get_by_role("button", name="Save reusable answer").click()
+                    expect(
+                        page.get_by_text(
+                            "Reusable answer saved and selected for the application draft."
+                        )
+                    ).to_be_visible()
+
+                    page.get_by_label("Open job").select_option(
+                        label="Backend Engineer — Demo"
+                    )
+                    page.get_by_label("Additional application note").fill(
+                        "Initial synthetic application note."
+                    )
+                    page.get_by_role("button", name="Prepare application draft").click()
+                    expect(
+                        page.locator(
+                            ".application-item .workflow-item-heading .status-pill"
+                        ).first
+                    ).to_have_text("prepared")
+
+                    # Approve revision 1, then edit it and verify that approval cannot carry over.
+                    page.get_by_label("Add this draft to a review batch").check()
+                    page.get_by_role(
+                        "button", name="Create batch from 1 selected"
+                    ).click()
+                    page.locator(".batch-review-item input[type='checkbox']").check()
+                    page.get_by_role("button", name="Approve selected").click()
+                    expect(
+                        page.locator(
+                            ".application-item .workflow-item-heading .status-pill"
+                        ).first
+                    ).to_have_text("approved")
+
+                    page.get_by_role("button", name="Revise approved content").click()
+                    page.get_by_label("Additional application note").last.fill(
+                        "Revised synthetic application note."
+                    )
+                    page.get_by_role("button", name="Save new revision").click()
+                    expect(
+                        page.get_by_text(
+                            "Draft revised to content revision 2. Any prior review must be repeated."
+                        )
+                    ).to_be_visible()
+                    expect(
+                        page.locator(
+                            ".application-item .workflow-item-heading .status-pill"
+                        ).first
+                    ).to_have_text("prepared")
+                    expect(page.get_by_text("stale", exact=True)).to_be_visible()
+
+                    page.get_by_label("Add this draft to a review batch").check()
+                    page.get_by_role(
+                        "button", name="Create batch from 1 selected"
+                    ).click()
+                    page.locator(".batch-review-item input[type='checkbox']").last.check()
+                    page.get_by_role("button", name="Approve selected").last.click()
+                    expect(
+                        page.locator(
+                            ".application-item .workflow-item-heading .status-pill"
+                        ).first
+                    ).to_have_text("approved")
+
+                    page.get_by_role("button", name="Mark submission started").click()
+                    expect(page.locator(".tracking-item .status-pill")).to_have_text(
+                        "submitting"
+                    )
+                    page.get_by_role("button", name="Show timeline").click()
+                    page.get_by_label("Timeline note").fill(
+                        "Synthetic acceptance: interview scheduled."
+                    )
+                    page.get_by_role("button", name="Add timeline event").click()
+                    expect(
+                        page.get_by_text(
+                            "Synthetic acceptance: interview scheduled."
+                        )
+                    ).to_be_visible()
                 finally:
                     browser.close()
         finally:
