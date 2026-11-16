@@ -504,13 +504,13 @@ def test_workspace_candidate_search_and_matching_flow() -> None:
             page.get_by_role("button", name="Upload resume").click()
             expect(
                 page.get_by_text(
-                    "Resume uploaded to private local storage. Parse it to review extracted fields."
+                    ("Resume uploaded to private local storage. " "Parse it to review extracted fields.")
                 )
             ).to_be_visible()
             page.get_by_role("button", name="Parse locally").click()
             expect(
                 page.get_by_text(
-                    "Resume parsed locally. Review the suggested fields before marking it reviewed."
+                    ("Resume parsed locally. Review the suggested fields " "before marking it reviewed.")
                 )
             ).to_be_visible()
             page.get_by_label("Name", exact=True).fill("Reviewed Smoke Candidate")
@@ -682,7 +682,7 @@ def test_workspace_uses_live_local_api_for_candidate_and_matching() -> None:
                     page.get_by_role("button", name="Confirm reviewed fields").click()
                     expect(
                         page.get_by_text(
-                            "Resume fields marked reviewed. Candidate profile contact details remain separately editable above."
+                            ("Resume fields marked reviewed. Candidate profile contact details " "remain separately editable above.")
                         )
                     ).to_be_visible()
 
@@ -730,7 +730,7 @@ def test_workspace_uses_live_local_api_for_candidate_and_matching() -> None:
                     page.get_by_role("button", name="Save new revision").click()
                     expect(
                         page.get_by_text(
-                            "Draft revised to content revision 2. Any prior review must be repeated."
+                            ("Draft revised to content revision 2. " "Any prior review must be repeated.")
                         )
                     ).to_be_visible()
                     expect(
