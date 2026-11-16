@@ -182,7 +182,7 @@ def test_workspace_candidate_search_and_matching_flow() -> None:
             page.get_by_role("button", name="Search jobs").click()
             expect(page.get_by_role("heading", name="Backend Engineer")).to_be_visible()
             page.get_by_role("button", name="Evaluate my matches").click()
-            expect(page.get_by_text("91.5")).to_be_visible()
+            expect(page.get_by_text("91.5", exact=True)).to_be_visible()
             expect(page.get_by_text("eligible", exact=True)).to_be_visible()
             browser.close()
     finally:
