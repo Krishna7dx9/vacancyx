@@ -744,7 +744,7 @@ def test_workspace_uses_live_local_api_for_candidate_and_matching() -> None:
                             ".application-item .workflow-item-heading .status-pill"
                         ).first
                     ).to_have_text("prepared")
-                    expect(page.get_by_text("stale", exact=True)).to_be_visible()
+                    expect(page.get_by_text("Stale revision", exact=True)).to_be_visible()
 
                     page.get_by_label("Add this draft to a review batch").check()
                     page.get_by_role(
