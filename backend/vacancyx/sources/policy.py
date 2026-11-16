@@ -70,6 +70,12 @@ async def read_bounded_response(
         if declared_length > max_bytes:
             raise SourcePolicyError("Source response exceeds the configured byte limit.")
 
+    if response.is_stream_consumed:
+        body = response.content
+        if len(body) > max_bytes:
+            raise SourcePolicyError("Source response exceeds the configured byte limit.")
+        return body
+
     chunks: list[bytes] = []
     total = 0
     async for chunk in response.aiter_raw():
