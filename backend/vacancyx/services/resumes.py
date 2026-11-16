@@ -68,7 +68,10 @@ class ResumeService:
 
         safe_filename, extension = self._sanitize_filename(original_filename)
         resumes_directory = self._storage_root.expanduser().resolve() / "resumes"
-        resumes_directory.mkdir(parents=True, exist_ok=True)
+        resumes_directory.mkdir(parents=True, exist_ok=True, mode=0o700)
+        if os.name == "posix":
+            # This is a dedicated private subdirectory, not the caller's whole storage root.
+            resumes_directory.chmod(0o700)
 
         file_id = str(uuid4())
         temporary_descriptor, temporary_name = tempfile.mkstemp(
