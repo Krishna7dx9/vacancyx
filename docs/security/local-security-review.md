@@ -32,6 +32,16 @@ This is an engineering review of selected high-risk paths, not an external audit
 
 **Verification:** Regression tests cover javascript:, data:, file:, HTTP, credentials, localhost, IP literals, non-default ports, and backslash confusion.
 
+### Python and frontend dependency audits
+
+**Finding:** The first Python dependency audit identified vulnerable versions admitted by the previous development/build constraints: pytest 8.4.2 and setuptools 79.0.1 (PYSEC-2026-1845, PYSEC-2026-3447, GHSA-xmj3-9gf7-h52w).
+
+**Remediation:** PR #84 raised the minimum pytest version to 9.0.3 and the setuptools build-system version to 84.1.0. Backend CI now runs `pip-audit --skip-editable` against the resolved environment; Frontend CI runs `npm audit`. CI also uses read-only repository permissions for frontend builds. PR #85 upgraded checkout/setup-python/setup-node actions to v7.
+
+**Verification:** Backend dependency audit, lint, strict mypy, and pytest passed on PR #84 head `736c92ee06a84a1ede4169bc3bce58d5deb69bef`. Browser Contract CI and Fresh Machine Release Verification also passed on that revision. The consolidated GitHub Actions v7 upgrade passed Backend CI, Frontend CI, Browser Contract CI, and Fresh Machine Release Verification on PR #85 head `13d85463c5bc73d332ee77e70484473921d5cc31`.
+
+**Residual requirement:** Re-run all release checks on the final tagged release commit; dependency databases and advisories change over time.
+
 ### Unauthenticated API
 
 **Finding:** Candidate profile, resume metadata, application, and workflow endpoints do not have user authentication or multi-user authorization.
@@ -66,7 +76,7 @@ Automated CI does not replace a target-computer recovery drill, a real user walk
 
 ## Remaining sign-off
 
-- [ ] Review dependency audit findings for the exact release commit.
+- [ ] Confirm Backend CI pip-audit and Frontend CI npm audit pass on the exact release commit; reassess any newly reported advisories.
 - [ ] Complete the target-computer install and synthetic product walkthrough.
 - [ ] Complete a backup restore drill using a disposable copy.
 - [ ] Confirm local filesystem permissions for database, resumes, browser state, and backups.
