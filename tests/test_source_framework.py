@@ -1,6 +1,7 @@
 """Contract and policy tests for the pluggable job-source framework."""
 
 import asyncio
+from collections.abc import AsyncIterator
 
 import httpx
 import pytest
@@ -127,7 +128,7 @@ def test_source_config_rejects_unbounded_limits_and_bad_hosts() -> None:
 
 def test_read_bounded_response_rejects_declared_and_streamed_oversize() -> None:
     class ChunkedStream(httpx.AsyncByteStream):
-        async def __aiter__(self):
+        async def __aiter__(self) -> AsyncIterator[bytes]:
             yield b"x" * 600
             yield b"x" * 600
 
