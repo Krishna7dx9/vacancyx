@@ -1,6 +1,6 @@
-from io import BytesIO
 import os
 import stat
+from io import BytesIO
 from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile
 
