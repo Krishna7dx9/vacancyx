@@ -1,0 +1,43 @@
+name: Bug report
+description: Report a reproducible defect in VacancyX
+title: "bug: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: "Do not include real resumes, contact details, tokens, cookies, or private database files. Use synthetic data."
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: Describe the observed behavior and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: "1. Start the API ... 2. Open ... 3. Click ..."
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Python, Node, browser, and commit SHA.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sanitized logs or screenshots
+      description: Remove personal data, credentials, cookies, and tokens.
+    validations:
+      required: false
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Impact and acceptance criteria
+      description: Who is affected and what would prove the fix?
+    validations:
+      required: true

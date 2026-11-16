@@ -1,0 +1,51 @@
+name: Feature request
+description: Propose a user-centered improvement
+title: "feat: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: User problem
+      description: What job-search task is difficult or impossible today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe the smallest useful outcome.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Add observable, testable outcomes.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Candidate profile and resume
+        - Job sources and discovery
+        - Matching
+        - Application preparation and review
+        - Tracking
+        - Browser assistance and safety
+        - Operations and recovery
+        - Frontend usability
+        - Developer experience
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety and privacy
+      options:
+        - label: This proposal does not require storing secrets or sharing candidate data with an unapproved service.
+          required: true
+        - label: This proposal does not automate final application submission or bypass employer controls.
+          required: true
