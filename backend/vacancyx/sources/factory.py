@@ -76,12 +76,11 @@ def configured_source_configurations(
     session: Session | None = None,
 ) -> list[SourceConfiguration]:
     """Return all configured sources for the local source-management workspace."""
-    labels = {"greenhouse": "Greenhouse", "lever": "Lever"}
     return [
         {
             "source_key": item["source_key"],
             "company_name": item["company_name"],
-            "provider": labels[item["provider"]],
+            "provider": "Greenhouse" if item["provider"] == "greenhouse" else "Lever",
             "is_enabled": item["is_enabled"],
             "managed_by": item["managed_by"],
         }
