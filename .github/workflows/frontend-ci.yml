@@ -12,8 +12,9 @@ on:
       - ".github/workflows/frontend-ci.yml"
   workflow_dispatch:
 
+# CI only reads source; it must never push generated files back to a contributor branch.
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: frontend-ci-${{ github.workflow }}-${{ github.ref }}
@@ -29,31 +30,14 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref || github.ref_name }}
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: |
-            frontend/package.json
-            frontend/package-lock.json
-      - name: Install dependencies
-        run: |
-          if [ -f package-lock.json ]; then npm ci; else npm install; fi
-      - name: Commit generated lockfile on same-repository PRs
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-        env:
-          BRANCH_NAME: ${{ github.head_ref }}
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add package-lock.json
-          if ! git diff --cached --quiet; then
-            git commit -m "chore: add reproducible frontend npm lockfile"
-            git push origin "HEAD:${BRANCH_NAME}"
-          fi
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install locked dependencies
+        run: npm ci
       - name: Audit dependencies
         run: npm audit
       - name: Type check
