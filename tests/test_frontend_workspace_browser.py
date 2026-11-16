@@ -13,6 +13,7 @@ from typing import Any
 import pytest
 
 playwright_api = pytest.importorskip("playwright.sync_api")
+expect = playwright_api.expect
 
 ROOT = Path(__file__).resolve().parents[1]
 FRONTEND = ROOT / "frontend"
