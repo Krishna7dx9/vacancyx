@@ -8,6 +8,7 @@ import pytest
 
 from vacancyx.config import Settings
 from vacancyx.sources.config import SourceConfig
+from vacancyx.sources.contracts import SourceListing
 from vacancyx.sources.factory import build_source_registry, configured_source_descriptors
 from vacancyx.sources.greenhouse import GreenhouseJobBoardAdapter
 from vacancyx.sources.lever import LeverPostingsAdapter
@@ -217,3 +218,38 @@ def test_lever_adapter_rejects_oversized_response_body() -> None:
     )
     with pytest.raises(SourcePolicyError, match="byte limit"):
         asyncio.run(adapter.fetch_page(cursor=None, page_size=10))
+
+
+
+@pytest.mark.parametrize(
+    "source_url",
+    [
+        "javascript:alert(1)",
+        "data:text/html,<script>alert(1)</script>",
+        "file:///etc/passwd",
+        "http://jobs.example.com/role/1",
+        "https://user:password@jobs.example.com/role/1",
+        "https://localhost/role/1",
+        "https://127.0.0.1/role/1",
+        "https://jobs.example.com:8443/role/1",
+        "https://jobs.example.com\\\\@evil.example/role/1",
+    ],
+)
+def test_source_listing_rejects_unsafe_external_links(source_url: str) -> None:
+    with pytest.raises(ValueError, match="source_url"):
+        SourceListing(
+            external_id="role-1",
+            title="Backend Engineer",
+            company_name="Example",
+            source_url=source_url,
+        )
+
+
+def test_source_listing_accepts_public_https_link() -> None:
+    listing = SourceListing(
+        external_id="role-1",
+        title="Backend Engineer",
+        company_name="Example",
+        source_url="https://jobs.example.com/role/1",
+    )
+    assert listing.source_url == "https://jobs.example.com/role/1"

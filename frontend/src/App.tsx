@@ -18,6 +18,31 @@ function splitTerms(value: string): string[] {
   return value.split(",").map((term) => term.trim()).filter(Boolean);
 }
 
+function safeExternalHref(value: string | null): string | null {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    const host = url.hostname.toLowerCase().replace(/\.$/, "");
+    const isIpv4 = /^\d{1,3}(\.\d{1,3}){3}$/.test(host);
+    if (
+      url.protocol !== "https:"
+      || url.username
+      || url.password
+      || (url.port !== "" && url.port !== "443")
+      || host === "localhost"
+      || host.endsWith(".localhost")
+      || !host.includes(".")
+      || host.startsWith("[")
+      || isIpv4
+    ) {
+      return null;
+    }
+    return url.href;
+  } catch {
+    return null;
+  }
+}
+
 function salaryLabel(job: Job): string {
   if (job.salary_min === null && job.salary_max === null) return "Salary not disclosed";
   const currency = job.salary_currency ?? "Unspecified currency";
@@ -712,8 +737,8 @@ function App() {
                       {match.unknown_fields.length > 0 && (
                         <p className="unknown-line">Needs review: {match.unknown_fields.join(", ")}</p>
                       )}
-                      {job.canonical_url && (
-                        <a className="job-link" href={job.canonical_url} target="_blank" rel="noreferrer">
+                      {safeExternalHref(job.canonical_url) && (
+                        <a className="job-link" href={safeExternalHref(job.canonical_url) ?? undefined} target="_blank" rel="noopener noreferrer">
                           Open original listing ↗
                         </a>
                       )}
@@ -736,8 +761,8 @@ function App() {
                       <span>{job.work_mode || "Work mode unknown"}</span>
                       <span>{salaryLabel(job)}</span>
                     </div>
-                    {job.canonical_url && (
-                      <a className="job-link" href={job.canonical_url} target="_blank" rel="noreferrer">
+                    {safeExternalHref(job.canonical_url) && (
+                      <a className="job-link" href={safeExternalHref(job.canonical_url) ?? undefined} target="_blank" rel="noopener noreferrer">
                         Open original listing ↗
                       </a>
                     )}

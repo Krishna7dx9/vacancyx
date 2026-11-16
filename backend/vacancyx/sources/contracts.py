@@ -1,7 +1,9 @@
 """Stable source adapter contracts; source-specific parsing stays outside the domain."""
 
+import ipaddress
 from datetime import datetime
 from typing import Protocol
+from urllib.parse import urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -35,6 +37,37 @@ class SourceListing(BaseModel):
     salary_max: int | None = Field(default=None, ge=0)
     salary_currency: str | None = Field(default=None, min_length=3, max_length=3)
     published_at: datetime | None = None
+
+    @field_validator("source_url")
+    @classmethod
+    def require_safe_https_source_url(cls, value: str) -> str:
+        """Reject executable, local, credential-bearing, and non-HTTPS listing links."""
+        if "\\" in value or any(ord(character) <= 32 for character in value):
+            raise ValueError("source_url must be a safe absolute HTTPS URL.")
+        try:
+            parsed = urlsplit(value)
+            hostname = parsed.hostname
+            port = parsed.port
+        except ValueError as error:
+            raise ValueError("source_url must be a safe absolute HTTPS URL.") from error
+        if (
+            parsed.scheme.casefold() != "https"
+            or hostname is None
+            or parsed.username is not None
+            or parsed.password is not None
+            or port not in (None, 443)
+        ):
+            raise ValueError("source_url must be a safe absolute HTTPS URL.")
+        host = hostname.casefold().rstrip(".")
+        try:
+            ipaddress.ip_address(host)
+        except ValueError:
+            pass
+        else:
+            raise ValueError("source_url must not target an IP literal.")
+        if host == "localhost" or host.endswith(".localhost") or "." not in host:
+            raise ValueError("source_url must not target a local or single-label host.")
+        return value
 
     @field_validator("published_at")
     @classmethod

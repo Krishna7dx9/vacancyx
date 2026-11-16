@@ -226,18 +226,9 @@ def test_page_limit_truncates_run_without_losing_current_page(db_session: Sessio
     assert db_session.scalar(select(func.count()).select_from(Job)) == 1
 
 
-def test_unsafe_listing_url_rejects_entire_page(db_session: Session) -> None:
-    source = FixtureSource(
-        "board-one",
-        {None: SourcePage(items=(_listing("unsafe", "http://jobs.example.test/role/1"),))},
-    )
-    result = asyncio.run(
-        JobDiscoveryService(db_session, _registry(source)).discover_source("board-one")
-    )
-
-    assert result.status == "failed"
-    assert result.error_codes == ("unsafe_listing_url",)
-    assert db_session.scalar(select(func.count()).select_from(Job)) == 0
+def test_unsafe_listing_url_is_rejected_before_ingestion() -> None:
+    with pytest.raises(ValueError, match="source_url"):
+        _listing("unsafe", "http://jobs.example.test/role/1")
 
 
 def test_adapter_cannot_exceed_configured_page_size(db_session: Session) -> None:
