@@ -41,7 +41,7 @@ def validate_loopback_url(value: str) -> str:
         address = ipaddress.ip_address(hostname)
     except ValueError:
         if hostname != "localhost":
-            raise ValueError("Benchmark requests are restricted to localhost/loopback.")
+            raise ValueError("Benchmark requests are restricted to localhost/loopback.") from None
     else:
         if not address.is_loopback:
             raise ValueError("Benchmark requests are restricted to localhost/loopback.")
