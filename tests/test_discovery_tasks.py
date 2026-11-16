@@ -153,7 +153,6 @@ def test_discovery_task_status_and_cancel_are_candidate_independent(workspace, m
     assert missing.status_code == 404
 
 
-
 def test_database_source_configuration_crud_and_discovery_integration(
     workspace, monkeypatch
 ) -> None:
