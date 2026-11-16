@@ -168,7 +168,7 @@ def test_workspace_candidate_search_and_matching_flow() -> None:
             page.get_by_placeholder("Python, SQL, FastAPI").fill("Python, SQL, FastAPI")
             page.get_by_label("Current location").fill("India")
             page.get_by_role("button", name="Save candidate").click()
-            expect(page.get_by_text("Smoke Test Candidate")).to_be_visible()
+            expect(page.locator(".candidate-summary strong")).to_have_text("Smoke Test Candidate")
 
             page.get_by_label("Search name").fill("Backend roles")
             page.get_by_label("Target job titles").fill("Backend Engineer, Software Engineer")
