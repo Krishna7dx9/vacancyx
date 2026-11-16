@@ -448,6 +448,7 @@ def test_workspace_candidate_search_and_matching_flow() -> None:
             page.goto("http://127.0.0.1:5173", wait_until="networkidle")
 
             page.get_by_role("heading", name="Find the right role.").wait_for(state="visible")
+            expect(page.get_by_text("No indexed jobs yet.")).to_be_visible()
             page.get_by_text("Create your first candidate profile").click()
             page.get_by_label("Display name", exact=True).fill("Smoke Test Candidate")
             page.get_by_placeholder("Python, SQL, FastAPI").fill("Python, SQL, FastAPI")
@@ -677,6 +678,15 @@ def test_workspace_uses_live_local_api_for_candidate_and_matching() -> None:
                         page.locator(".source-config-item").get_by_text(
                             "greenhouse · greenhouse-synthetic-board"
                         )
+                    ).to_be_visible()
+
+                    # Dismissing the destructive confirmation must preserve the source.
+                    page.once("dialog", lambda dialog: dialog.dismiss())
+                    page.locator(".source-config-item").get_by_role(
+                        "button", name="Delete"
+                    ).click()
+                    expect(
+                        page.locator(".source-config-item").get_by_text("Synthetic Systems")
                     ).to_be_visible()
 
                     page.get_by_role("button", name="Queue selected sources").click()
