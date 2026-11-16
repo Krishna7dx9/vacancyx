@@ -44,7 +44,9 @@ def _wait_for_api(process: subprocess.Popen[str]) -> None:
         if process.poll() is not None:
             raise AssertionError("FastAPI exited before becoming ready.")
         try:
-            with urllib.request.urlopen("http://127.0.0.1:8000/health/ready", timeout=1) as response:
+            with urllib.request.urlopen(
+                "http://127.0.0.1:8000/health/ready", timeout=1
+            ) as response:
                 if response.status == 200:
                     return
         except (OSError, urllib.error.URLError):
@@ -488,7 +490,9 @@ def test_workspace_uses_live_local_api_for_candidate_and_matching() -> None:
                 try:
                     page = browser.new_page()
                     page.goto("http://127.0.0.1:5173", wait_until="networkidle")
-                    page.get_by_role("heading", name="Find the right role.").wait_for(state="visible")
+                    page.get_by_role("heading", name="Find the right role.").wait_for(
+                        state="visible"
+                    )
 
                     page.get_by_text("Add another candidate").click()
                     page.get_by_label("Display name", exact=True).fill("Live API Smoke Candidate")
