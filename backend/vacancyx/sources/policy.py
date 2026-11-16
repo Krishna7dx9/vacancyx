@@ -4,9 +4,9 @@ import asyncio
 import ipaddress
 from collections.abc import Awaitable, Callable
 from typing import TypeVar
+from urllib.parse import urlsplit
 
 import httpx
-from urllib.parse import urlsplit
 
 from vacancyx.sources.config import SourceConfig
 
