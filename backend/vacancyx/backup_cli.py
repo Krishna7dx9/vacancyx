@@ -8,10 +8,10 @@ import sqlite3
 from pathlib import Path
 from typing import Sequence
 
-from sqlalchemy import inspect
+from urllib.parse import quote
 
 from vacancyx.db.backup import backup_sqlite_database
-from vacancyx.db.session import build_engine, get_engine
+from vacancyx.db.session import get_engine
 
 
 def verify_sqlite_backup(path: str | Path) -> dict[str, object]:
@@ -20,7 +20,10 @@ def verify_sqlite_backup(path: str | Path) -> dict[str, object]:
     if not backup_path.is_file():
         raise FileNotFoundError(f"Backup file does not exist: {backup_path}")
 
-    connection = sqlite3.connect(f"file:{backup_path.as_posix()}?mode=ro", uri=True)
+    connection = sqlite3.connect(
+        f"file:{quote(str(backup_path), safe='/')}?mode=ro",
+        uri=True,
+    )
     try:
         integrity = connection.execute("PRAGMA integrity_check").fetchone()
         if integrity != ("ok",):
@@ -37,16 +40,15 @@ def verify_sqlite_backup(path: str | Path) -> dict[str, object]:
         if version_table is not None:
             row = connection.execute("SELECT version_num FROM alembic_version").fetchone()
             migration_version = str(row[0]) if row else None
-        connection.close()
-    except Exception:
-        connection.close()
-        raise
-
-    engine = build_engine(f"sqlite:///{backup_path}")
-    try:
-        table_names = sorted(inspect(engine).get_table_names())
+        table_names = sorted(
+            row[0]
+            for row in connection.execute(
+                "SELECT name FROM sqlite_master "
+                "WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+            )
+        )
     finally:
-        engine.dispose()
+        connection.close()
     if not table_names:
         raise ValueError("SQLite backup contains no application tables.")
     return {
