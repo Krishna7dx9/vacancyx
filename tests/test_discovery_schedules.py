@@ -214,3 +214,37 @@ def test_scheduler_requires_bounded_batch_size(workspace) -> None:
     _client, factory = workspace
     with pytest.raises(ValueError, match="batch_size"):
         DiscoveryScheduler(factory, lambda: set(), batch_size=501)
+
+
+
+def test_schedule_can_target_database_managed_source(workspace, monkeypatch) -> None:
+    client, _factory = workspace
+    empty_settings = lambda: Settings(_env_file=None)
+    monkeypatch.setattr(
+        "vacancyx.api.routes.discovery.get_settings",
+        empty_settings,
+    )
+    monkeypatch.setattr(
+        "vacancyx.api.routes.discovery_schedules.get_settings",
+        empty_settings,
+    )
+    source = client.post(
+        "/api/v1/discovery/source-configs",
+        json={
+            "provider": "lever",
+            "external_key": "example-site",
+            "company_name": "Example",
+        },
+    )
+    assert source.status_code == 201
+
+    schedule = client.post(
+        "/api/v1/discovery/schedules",
+        json={
+            "name": "Database source schedule",
+            "source_keys": ["lever-example-site"],
+            "interval_seconds": 3600,
+        },
+    )
+    assert schedule.status_code == 201
+    assert schedule.json()["source_keys"] == ["lever-example-site"]
