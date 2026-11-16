@@ -8,6 +8,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from vacancyx.config import Settings
 from vacancyx.db.base import Base
 from vacancyx.db.session import get_session
 from vacancyx.main import create_app
@@ -34,7 +35,10 @@ def test_operations_summary_reports_queue_and_schedule_health(monkeypatch) -> No
     app.dependency_overrides[get_session] = override_session
     monkeypatch.setattr(
         "vacancyx.api.routes.operations.get_settings",
-        lambda: __import__("vacancyx.config", fromlist=["Settings"]).Settings(_env_file=None),
+        lambda: Settings(
+            _env_file=None,
+            greenhouse_boards=[{"board_token": "demo", "company_name": "Demo Company"}],
+        ),
     )
     now = datetime.now(UTC)
     with factory() as session, session.begin():
@@ -99,7 +103,7 @@ def test_operations_summary_reports_queue_and_schedule_health(monkeypatch) -> No
         assert response.status_code == 200
         payload = response.json()
         assert payload["database_status"] == "ready"
-        assert payload["configured_source_count"] == 0
+        assert payload["configured_source_count"] == 1
         assert payload["enabled_schedule_count"] == 2
         assert payload["due_schedule_count"] == 1
         assert payload["task_counts"] == {"failed": 1, "queued": 1, "running": 1}
