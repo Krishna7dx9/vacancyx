@@ -73,7 +73,9 @@ class ResumeService:
             raise ResumeUploadError("The private resume storage directory cannot be a symlink.")
         resumes_directory.mkdir(parents=True, exist_ok=True, mode=0o700)
         if not resumes_directory.resolve().is_relative_to(storage_root):
-            raise ResumeUploadError("The private resume storage directory is outside local storage.")
+            raise ResumeUploadError(
+                "The private resume storage directory is outside local storage."
+            )
         if os.name == "posix":
             # This is a dedicated private subdirectory, not the caller's whole storage root.
             resumes_directory.chmod(0o700)
