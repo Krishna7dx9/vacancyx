@@ -1,0 +1,85 @@
+name: Fresh Install Verification
+
+on:
+  pull_request:
+    paths:
+      - "backend/**"
+      - "tests/**"
+      - "frontend/**"
+      - "pyproject.toml"
+      - "alembic.ini"
+      - ".github/workflows/fresh-install.yml"
+      - "docs/operations/**"
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "tests/**"
+      - "frontend/**"
+      - "pyproject.toml"
+      - "alembic.ini"
+      - ".github/workflows/fresh-install.yml"
+      - "docs/operations/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fresh-install-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  clean-install:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install backend from clean environment
+        run: |
+          python -m venv .venv
+          . .venv/bin/activate
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+          ruff check backend tests
+          mypy backend
+          pytest
+      - name: Migrate and seed an isolated fresh database
+        env:
+          VACANCYX_DATABASE_URL: sqlite:///./.vacancyx-release-check/vacancyx.db
+          VACANCYX_STORAGE_DIR: ./.vacancyx-release-check
+        run: |
+          . .venv/bin/activate
+          alembic upgrade head
+          vacancyx-demo-seed
+          python - <<'PY'
+          import os
+          from sqlalchemy import create_engine, inspect
+          engine = create_engine(os.environ["VACANCYX_DATABASE_URL"])
+          tables = set(inspect(engine).get_table_names())
+          required = {"candidates", "jobs", "candidate_search_profiles", "public_job_sources"}
+          missing = required - tables
+          assert not missing, f"missing migrated tables: {sorted(missing)}"
+          print(f"Fresh database contains {len(tables)} tables.")
+          PY
+      - name: Install frontend dependencies and verify production build
+        working-directory: frontend
+        run: |
+          npm ci
+          npm audit
+          npm run typecheck
+          npm run build
+      - name: Ensure generated local data is not tracked
+        run: |
+          git status --short
+          test -z "$(git status --porcelain --untracked-files=all)"
+
