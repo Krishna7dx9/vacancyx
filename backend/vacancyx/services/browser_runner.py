@@ -46,6 +46,14 @@ class BrowserAssistResult:
     manual_review_reasons: tuple[str, ...]
 
 
+class BrowserAssistExecutionError(RuntimeError):
+    """Field fill failed after a known number of controls had already been filled."""
+
+    def __init__(self, filled_field_count: int) -> None:
+        super().__init__("A browser field could not be filled safely.")
+        self.filled_field_count = filled_field_count
+
+
 def portal_fields_from_metadata(metadata: list[dict[str, Any]]) -> list[PortalField]:
     """Convert browser metadata into the narrow, deterministic policy contract."""
     return [
@@ -63,11 +71,14 @@ def fill_planned_fields(locator: Any, plan: FillPlan) -> int:
     """Fill only planned visible fields; do not click, select, or submit controls."""
     filled = 0
     for field in plan.fields:
-        control = locator.nth(int(field.field_name))
-        if not control.is_visible():
-            continue
-        control.fill(field.value)
-        filled += 1
+        try:
+            control = locator.nth(int(field.field_name))
+            if not control.is_visible():
+                continue
+            control.fill(field.value)
+            filled += 1
+        except Exception as error:
+            raise BrowserAssistExecutionError(filled) from error
     return filled
 
 
@@ -76,7 +87,12 @@ def run_browser_assist(
     candidate_snapshot: dict[str, Any],
     allowed_hosts: set[str],
 ) -> BrowserAssistResult:
-    """Open a visible browser, fill safe known fields, then hand control to the user."""
+    """Open a visible browser, fill safe known fields, then hand control to the user.
+
+    Browser runtime errors after launch are returned as an interrupted, uncertain
+    session. The caller can audit the interruption without ever treating it as a
+    successful application submission.
+    """
     safe_url = validate_portal_url(url, allowed_hosts)
     try:
         playwright_api = import_module("playwright.sync_api")
@@ -89,6 +105,9 @@ def run_browser_assist(
     result: BrowserAssistResult | None = None
     with playwright_api.sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=False)
+        page: Any = None
+        filled_count = 0
+        skipped_count = 0
         try:
             page = browser.new_page()
 
@@ -125,17 +144,18 @@ def run_browser_assist(
                 metadata = locator.evaluate_all(_FIELD_METADATA_SCRIPT)
                 fields = portal_fields_from_metadata(metadata)
                 plan = build_fill_plan(fields, candidate_snapshot)
-                filled = fill_planned_fields(locator, plan)
+                skipped_count = len(plan.skipped_fields)
+                filled_count = fill_planned_fields(locator, plan)
                 result = BrowserAssistResult(
                     page_url=page.url,
                     interruption_codes=(),
-                    filled_field_count=filled,
-                    skipped_field_count=len(plan.skipped_fields),
+                    filled_field_count=filled_count,
+                    skipped_field_count=skipped_count,
                     manual_review_reasons=plan.manual_review_reasons,
                 )
                 print(
-                    f"Filled {filled} recognized fields; "
-                    f"left {len(plan.skipped_fields)} fields untouched."
+                    f"Filled {filled_count} recognized fields; "
+                    f"left {skipped_count} fields untouched."
                 )
                 if plan.manual_review_reasons:
                     print("Manual review required: " + ", ".join(plan.manual_review_reasons))
@@ -145,6 +165,20 @@ def run_browser_assist(
                 "Close the browser when finished, then press Enter here."
             )
             input()
+        except Exception as error:
+            if isinstance(error, BrowserAssistExecutionError):
+                filled_count = error.filled_field_count
+            result = BrowserAssistResult(
+                page_url=getattr(page, "url", safe_url),
+                interruption_codes=("browser_session_uncertain",),
+                filled_field_count=filled_count,
+                skipped_field_count=skipped_count,
+                manual_review_reasons=("check_employer_portal_before_retry",),
+            )
+            print(
+                "Browser assistance was interrupted. The application outcome is uncertain. "
+                "Check the employer portal before retrying; VacancyX did not submit it."
+            )
         finally:
             browser.close()
 
