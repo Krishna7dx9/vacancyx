@@ -649,6 +649,41 @@ def test_workspace_uses_live_local_api_for_candidate_and_matching() -> None:
                     page.get_by_role("button", name="Save search profile").click()
                     expect(page.get_by_text("Search profile saved.")).to_be_visible()
 
+                    # Configure a real public-board source and durable recurring schedule.
+                    page.get_by_label("Provider").select_option("greenhouse")
+                    page.get_by_label("Greenhouse board token").fill("synthetic-board")
+                    page.get_by_label("Company display name").fill("Synthetic Systems")
+                    page.get_by_role("button", name="Add public source").click()
+                    expect(
+                        page.get_by_text(
+                            "Synthetic Systems was added. Restart the worker and scheduler to load it."
+                        )
+                    ).to_be_visible()
+                    expect(
+                        page.locator(".source-config-item").get_by_text(
+                            "greenhouse · greenhouse-synthetic-board"
+                        )
+                    ).to_be_visible()
+
+                    page.get_by_role("button", name="Queue selected sources").click()
+                    expect(
+                        page.get_by_text(
+                            "Queued 1 source refresh task(s). Start the local worker to execute them."
+                        )
+                    ).to_be_visible()
+                    expect(page.get_by_text("queued", exact=True)).to_be_visible()
+
+                    page.get_by_label("Schedule name").fill("Live API daily refresh")
+                    page.get_by_label("Run frequency").select_option("86400")
+                    page.get_by_role("button", name="Save recurring schedule").click()
+                    expect(
+                        page.get_by_text(
+                            "Schedule saved. Its first discovery run is due immediately "
+                            "when the local scheduler is running."
+                        )
+                    ).to_be_visible()
+                    expect(page.get_by_text("Live API daily refresh")).to_be_visible()
+
                     page.get_by_label("Role, company or keyword").fill("Backend Engineer")
                     page.get_by_role("button", name="Search jobs").click()
                     expect(
