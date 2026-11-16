@@ -66,7 +66,7 @@ jobs:
           from sqlalchemy import create_engine, inspect
           engine = create_engine(os.environ["VACANCYX_DATABASE_URL"])
           tables = set(inspect(engine).get_table_names())
-          required = {"candidates", "jobs", "candidate_search_profiles", "public_job_sources"}
+          required = {"candidate_profiles", "jobs", "search_profiles", "public_job_sources"}
           missing = required - tables
           assert not missing, f"missing migrated tables: {sorted(missing)}"
           print(f"Fresh database contains {len(tables)} tables.")
