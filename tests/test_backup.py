@@ -1,5 +1,7 @@
 
+import os
 import sqlite3
+import stat
 from unittest.mock import Mock
 
 import pytest
@@ -28,6 +30,8 @@ def test_backup_restores_committed_candidate_data_atomically(tmp_path) -> None:
     result = backup_sqlite_database(source_engine, destination)
     assert result == destination.resolve()
     assert result.is_file()
+    if os.name == "posix":
+        assert stat.S_IMODE(result.stat().st_mode) == 0o600
 
     restored_engine = build_engine(f"sqlite:///{result}")
     try:

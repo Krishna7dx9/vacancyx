@@ -1,3 +1,5 @@
+import os
+import stat
 from io import BytesIO
 from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile
@@ -61,6 +63,9 @@ def test_pdf_upload_stores_generated_key_and_safe_metadata(
     assert resume.file_size_bytes > 0
     assert len(resume.checksum_sha256) == 64
     assert resume.parse_status == "pending"
+    if os.name == "posix":
+        assert stat.S_IMODE(stored_path.parent.stat().st_mode) == 0o700
+        assert stat.S_IMODE(stored_path.stat().st_mode) == 0o600
 
 
 def test_upload_rejects_mismatched_signature_and_cleans_staging(

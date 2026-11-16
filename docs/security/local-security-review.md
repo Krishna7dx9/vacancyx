@@ -62,6 +62,16 @@ This is an engineering review of selected high-risk paths, not an external audit
 
 **Residual risk:** A real employer portal and its scripts are third-party code. The user must supervise every session, inspect filled data, and submit manually. Browser assistance does not prove an application was submitted.
 
+### Local filesystem permissions
+
+**Finding:** SQLite creates database files using the process umask, which is commonly permissive enough to make a new database readable by other local OS accounts. Resume files were created with restrictive temporary-file permissions, but their containing directory could remain broadly listable.
+
+**Remediation:** The SQLite engine now restricts file-backed database permissions to owner read/write (0600) on POSIX systems whenever a connection is opened. Resume storage uses a dedicated owner-only directory (0700); staged resume files retain owner-only permissions (0600). SQLite backups are created through owner-only temporary files (0600) before atomic publication.
+
+**Verification:** POSIX-only regression tests inspect the resulting database, resume directory/file, and backup modes. These checks are skipped on non-POSIX platforms, where filesystem ACLs must be managed using the operating system's security controls.
+
+**Residual risk:** These mode bits do not encrypt data, protect against the same OS account, or guarantee Windows ACL configuration. Keep the database, resume storage, browser state, and backup paths on a private local account and configure Windows folder permissions where applicable.
+
 ### Backup and recovery
 
 **Controls reviewed:** SQLite online backup API, integrity check before atomic publication, destination/source separation, read-only backup verification, foreign-key check, and explicit warning that backup files contain candidate data.
