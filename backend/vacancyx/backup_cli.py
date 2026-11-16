@@ -8,8 +8,6 @@ import sqlite3
 from pathlib import Path
 from typing import Sequence
 
-from urllib.parse import quote
-
 from vacancyx.db.backup import backup_sqlite_database
 from vacancyx.db.session import get_engine
 
@@ -21,7 +19,7 @@ def verify_sqlite_backup(path: str | Path) -> dict[str, object]:
         raise FileNotFoundError(f"Backup file does not exist: {backup_path}")
 
     connection = sqlite3.connect(
-        f"file:{quote(str(backup_path), safe='/')}?mode=ro",
+        f"{backup_path.as_uri()}?mode=ro",
         uri=True,
     )
     try:
