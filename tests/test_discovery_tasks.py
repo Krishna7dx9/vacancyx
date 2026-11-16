@@ -151,3 +151,114 @@ def test_discovery_task_status_and_cancel_are_candidate_independent(workspace, m
 
     missing = client.get("/api/v1/discovery/tasks/not-a-task")
     assert missing.status_code == 404
+
+
+def test_database_source_configuration_crud_and_discovery_integration(
+    workspace, monkeypatch
+) -> None:
+    client, _factory = workspace
+    monkeypatch.setattr(
+        "vacancyx.api.routes.discovery.get_settings",
+        lambda: Settings(_env_file=None),
+    )
+
+    created = client.post(
+        "/api/v1/discovery/source-configs",
+        json={
+            "provider": "greenhouse",
+            "external_key": "Acme-Board",
+            "company_name": "Acme",
+        },
+    )
+    assert created.status_code == 201
+    source = created.json()
+    assert source["source_key"] == "greenhouse-acme-board"
+    assert source["provider"] == "Greenhouse"
+    assert source["managed_by"] == "database"
+    assert source["is_enabled"] is True
+
+    duplicate = client.post(
+        "/api/v1/discovery/source-configs",
+        json={
+            "provider": "greenhouse",
+            "external_key": "acme-board",
+            "company_name": "Acme Duplicate",
+        },
+    )
+    assert duplicate.status_code == 409
+
+    configs = client.get("/api/v1/discovery/source-configs")
+    assert configs.status_code == 200
+    assert [item["source_key"] for item in configs.json()] == ["greenhouse-acme-board"]
+    assert client.get("/api/v1/discovery/sources").json()["items"][0]["source_key"] == (
+        "greenhouse-acme-board"
+    )
+
+    disabled = client.patch(
+        "/api/v1/discovery/source-configs/greenhouse-acme-board",
+        json={"is_enabled": False},
+    )
+    assert disabled.status_code == 200
+    assert disabled.json()["is_enabled"] is False
+    assert client.get("/api/v1/discovery/sources").json()["items"] == []
+
+    rejected = client.post(
+        "/api/v1/discovery/tasks",
+        json={
+            "source_keys": ["greenhouse-acme-board"],
+            "idempotency_key": "db-source-disabled-001",
+        },
+    )
+    assert rejected.status_code == 409
+
+    enabled = client.patch(
+        "/api/v1/discovery/source-configs/greenhouse-acme-board",
+        json={"is_enabled": True, "company_name": "Acme Software"},
+    )
+    assert enabled.status_code == 200
+    assert enabled.json()["company_name"] == "Acme Software"
+    queued = client.post(
+        "/api/v1/discovery/tasks",
+        json={
+            "source_keys": ["greenhouse-acme-board"],
+            "idempotency_key": "db-source-enabled-001",
+        },
+    )
+    assert queued.status_code == 202
+
+    assert client.delete(
+        "/api/v1/discovery/source-configs/greenhouse-acme-board"
+    ).status_code == 204
+    assert client.get("/api/v1/discovery/source-configs").json() == []
+    assert client.get("/api/v1/discovery/sources").json()["items"] == []
+
+
+def test_environment_sources_are_visible_but_read_only(workspace, monkeypatch) -> None:
+    client, _factory = workspace
+    monkeypatch.setattr(
+        "vacancyx.api.routes.discovery.get_settings",
+        lambda: _configured_settings(),
+    )
+
+    configs = client.get("/api/v1/discovery/source-configs")
+    assert configs.status_code == 200
+    assert configs.json()[0]["managed_by"] == "environment"
+    assert configs.json()[0]["source_key"] == "greenhouse-acme"
+
+    update = client.patch(
+        "/api/v1/discovery/source-configs/greenhouse-acme",
+        json={"is_enabled": False},
+    )
+    assert update.status_code == 409
+    delete = client.delete("/api/v1/discovery/source-configs/greenhouse-acme")
+    assert delete.status_code == 409
+
+    invalid = client.post(
+        "/api/v1/discovery/source-configs",
+        json={
+            "provider": "greenhouse",
+            "external_key": "../unsafe",
+            "company_name": "Unsafe",
+        },
+    )
+    assert invalid.status_code == 422

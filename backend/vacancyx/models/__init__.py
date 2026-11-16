@@ -1,7 +1,7 @@
 """ORM models exported for migrations and application services."""
 
 from vacancyx.models.candidate_answers import CandidateAnswer, CandidateAnswerRevision
-from vacancyx.models.discovery import DiscoverySchedule
+from vacancyx.models.discovery import DiscoverySchedule, PublicJobSource
 from vacancyx.models.entities import (
     Application,
     ApplicationApproval,
@@ -29,6 +29,7 @@ __all__ = [
     "CandidateAnswerRevision",
     "CandidateProfile",
     "DiscoverySchedule",
+    "PublicJobSource",
     "Job",
     "JobObservation",
     "Resume",

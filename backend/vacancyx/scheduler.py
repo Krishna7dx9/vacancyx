@@ -41,9 +41,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         level=getattr(logging, settings.log_level),
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
-    source_registry = build_source_registry(settings)
+    session_factory = get_session_factory()
+    with session_factory() as session:
+        source_registry = build_source_registry(settings, session)
     scheduler = DiscoveryScheduler(
-        get_session_factory(),
+        session_factory,
         lambda: set(source_registry.enabled_source_keys()),
     )
 

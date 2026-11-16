@@ -446,7 +446,8 @@ def main() -> None:
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
     session_factory = get_session_factory()
-    source_registry = build_source_registry(settings)
+    with session_factory() as session:
+        source_registry = build_source_registry(settings, session)
     worker = TaskWorker(
         session_factory=session_factory,
         handlers=build_default_registry(

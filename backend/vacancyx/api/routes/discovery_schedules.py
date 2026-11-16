@@ -25,13 +25,6 @@ SessionDep = Annotated[Session, Depends(get_session)]
 @router.post("", response_model=DiscoveryScheduleRead, status_code=status.HTTP_201_CREATED)
 def create_schedule(payload: DiscoveryScheduleCreate, session: SessionDep) -> DiscoveryScheduleRead:
     """Create a local recurring schedule for currently configured public sources."""
-    enabled_sources = set(build_source_registry(get_settings()).enabled_source_keys())
-    unknown = sorted(set(payload.source_keys) - enabled_sources)
-    if unknown:
-        raise HTTPException(
-            status_code=422,
-            detail="Unknown or disabled source keys: " + ", ".join(unknown),
-        )
     schedule = DiscoverySchedule(
         name=payload.name,
         source_keys=payload.source_keys,
@@ -40,6 +33,13 @@ def create_schedule(payload: DiscoveryScheduleCreate, session: SessionDep) -> Di
         next_run_at=datetime.now(UTC),
     )
     with session.begin():
+        enabled_sources = set(build_source_registry(get_settings(), session).enabled_source_keys())
+        unknown = sorted(set(payload.source_keys) - enabled_sources)
+        if unknown:
+            raise HTTPException(
+                status_code=422,
+                detail="Unknown or disabled source keys: " + ", ".join(unknown),
+            )
         session.add(schedule)
         session.flush()
     session.refresh(schedule)

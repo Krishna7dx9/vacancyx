@@ -27,6 +27,7 @@ def test_full_migration_chain_upgrades_and_downgrades_discovery_schedules(tmp_pa
             assert "applications" in tables
             assert "automation_tasks" in tables
             assert "discovery_schedules" in tables
+            assert "public_job_sources" in tables
             schedule_columns = {
                 column["name"] for column in inspector.get_columns("discovery_schedules")
             }
@@ -45,11 +46,27 @@ def test_full_migration_chain_upgrades_and_downgrades_discovery_schedules(tmp_pa
                 index["name"] for index in inspector.get_indexes("discovery_schedules")
             }
 
+            source_columns = {
+                column["name"] for column in inspector.get_columns("public_job_sources")
+            }
+            assert {
+                "id",
+                "source_key",
+                "provider",
+                "external_key",
+                "company_name",
+                "is_enabled",
+            } <= source_columns
+
             command.downgrade(config, "0004_unique_pending_batch_item")
-            assert "discovery_schedules" not in set(inspect(connection).get_table_names())
+            downgraded_tables = set(inspect(connection).get_table_names())
+            assert "discovery_schedules" not in downgraded_tables
+            assert "public_job_sources" not in downgraded_tables
 
             command.upgrade(config, "head")
-            assert "discovery_schedules" in set(inspect(connection).get_table_names())
+            upgraded_tables = set(inspect(connection).get_table_names())
+            assert "discovery_schedules" in upgraded_tables
+            assert "public_job_sources" in upgraded_tables
     finally:
         config.attributes.clear()
         engine.dispose()
