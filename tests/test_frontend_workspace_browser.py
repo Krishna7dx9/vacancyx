@@ -513,7 +513,7 @@ def test_workspace_candidate_search_and_matching_flow() -> None:
             page.locator('input[type="file"]').set_input_files({
                 "name": "synthetic-resume.txt",
                 "mimeType": "text/plain",
-                "buffer": b"Synthetic resume\\nPython\\nSQL\\nFastAPI",
+                "buffer": b"Synthetic resume\nPython\nSQL\nFastAPI",
             })
             page.get_by_role("button", name="Upload resume").click()
             expect(
@@ -722,9 +722,9 @@ def test_workspace_uses_live_local_api_for_candidate_and_matching() -> None:
                         "name": "live-api-synthetic-resume.txt",
                         "mimeType": "text/plain",
                         "buffer": (
-                            b"Live API Synthetic Candidate\\n"
-                            b"Email: live-api@example.test\\n"
-                            b"Python, SQL, FastAPI\\n"
+                            b"Live API Synthetic Candidate\n"
+                            b"Email: live-api@example.test\n"
+                            b"Python, SQL, FastAPI\n"
                             b"Backend engineering experience"
                         ),
                     })
